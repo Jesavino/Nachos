@@ -54,7 +54,7 @@
 #include "system.h"
 
 #ifdef CHANGED
-#include "grouptest.h"
+extern void lockTestStart(void);
 #endif
 
 // External functions used by this file
@@ -92,7 +92,7 @@ main(int argc, char **argv)
 #endif
 
 #ifdef CHANGED
-    LockTest();
+    lockTestStart();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {

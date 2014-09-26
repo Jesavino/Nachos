@@ -1,20 +1,13 @@
 #ifdef CHANGED
 #include "grouptest.h"
 
-LockTest::LockTest() {
-  full = new(std::nothrow) Condition("producer");
-  empty = new(std::nothrow) Condition("consumer");
-  pLock = new(std::nothrow) Lock("pLock");
-  cLock = new(std::nothrow) Lock("cLock");
-  n = 0;
-  m = 0;
-  i = 0;
-  size = 2;
-  inBuffer = 0;
-}
+Condition *full;
+Condition *empty;
+Lock *pLock;
+Lock *cLock;
+int n, m, i, size, inBuffer;;
 
-
-void LockTest::consumerThread(int buffer) {
+void consumerThread(int buffer) {
   char * buff = (char *) buffer;
   
   while (1) {
@@ -29,7 +22,7 @@ void LockTest::consumerThread(int buffer) {
   }
 }
   
-void LockTest::producerThread(int buffer) {
+void producerThread(int buffer) {
   char * buff = (char *) buffer;
   char * hello = "Hello world";
   int size = 2;
@@ -43,12 +36,21 @@ void LockTest::producerThread(int buffer) {
     
     pLock->Release();
     empty->Signal(cLock);
-    if (m >= strlen(hello)) break;
+    if (m >= strlen(hello)) m = 0;
   }
   
 }
   
-void LockTest::testStart() {
+void lockTestStart() {
+  full = new(std::nothrow) Condition("producer");
+  empty = new(std::nothrow) Condition("consumer");
+  pLock = new(std::nothrow) Lock("pLock");
+  cLock = new(std::nothrow) Lock("cLock");
+  n = 0;
+  m = 0;
+  i = 0;
+  size = 2;
+  inBuffer = 0;
   DEBUG('t', "Entering Locktest\n");
   //create producer consumer
   char buffer[size];
@@ -56,8 +58,8 @@ void LockTest::testStart() {
   Thread * consumer = new(std::nothrow) Thread("consumer");
   Thread * producer = new(std::nothrow) Thread("producer");
 
-  consumer->Fork(LockTest::consumerThread, (int ) pbuffer);
-  LockTest::producerThread((int ) pbuffer);
+  consumer->Fork(consumerThread, (int ) pbuffer);
+  producer->Fork(producerThread, (int ) pbuffer);
 
 }
 
