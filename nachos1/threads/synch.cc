@@ -103,7 +103,9 @@ Semaphore::V()
 // Dummy functions -- so we can compile our later assignments 
 // Note -- without a correct implementation of Condition::Wait(), 
 // the test case in the network assignment won't work!
-Lock::Lock(const char* debugName) {}
+Lock::Lock(const char* debugName) {
+  name = debugName;
+}
 Lock::~Lock() {
 }
 void Lock::Acquire() {
@@ -120,8 +122,35 @@ bool Lock::isHeldByCurrentThread(){	// true if the current thread
   return pid == getpid();
 }
 
-Condition::Condition(const char* debugName) { }
+Condition::Condition(const char* debugName) { 
+  name = debugName;
+  queue = new(std::nothrow) List;
+}
 Condition::~Condition() { }
-void Condition::Wait(Lock* conditionLock) { ASSERT(false); }
-void Condition::Signal(Lock* conditionLock) { }
-void Condition::Broadcast(Lock* conditionLock) { }
+
+void Condition::Wait(Lock* conditionLock) { 
+
+  conditionLock->Release();
+  //WATCH HERE FOR PROBLEMS 
+
+  queue->Append((void *) currentThread);
+  currentThread->Sleep();
+  conditionLock->Acquire();
+  //  ASSERT(false); 
+}
+
+void Condition::Signal(Lock* conditionLock) { 
+    Thread *thread;
+    thread = (Thread *)queue->Remove();
+    if (thread != NULL)	   // make thread ready, consuming the V immediately
+      scheduler->ReadyToRun(thread);
+}
+
+void Condition::Broadcast(Lock* conditionLock) { 
+  Thread * thread;
+  thread = (Thread * )queue->Remove();
+  while (thread != NULL) {
+    scheduler->ReadyToRun(thread);
+    thread=(Thread *) queue->Remove();    
+  }
+}
