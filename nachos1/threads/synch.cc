@@ -25,6 +25,9 @@
 #include "synch.h"
 #include "system.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+
 //----------------------------------------------------------------------
 // Semaphore::Semaphore
 // 	Initialize a semaphore, so that it can be used for synchronization.
@@ -101,9 +104,21 @@ Semaphore::V()
 // Note -- without a correct implementation of Condition::Wait(), 
 // the test case in the network assignment won't work!
 Lock::Lock(const char* debugName) {}
-Lock::~Lock() {}
-void Lock::Acquire() {}
-void Lock::Release() {}
+Lock::~Lock() {
+}
+void Lock::Acquire() {
+  oldLevel = interrupt->SetLevel(IntOff);
+  pid = getpid();
+}
+
+void Lock::Release() {
+  if (isHeldByCurrentThread())
+    interrupt->SetLevel(oldLevel);
+}
+
+bool Lock::isHeldByCurrentThread(){	// true if the current thread
+  return pid == getpid();
+}
 
 Condition::Condition(const char* debugName) { }
 Condition::~Condition() { }
