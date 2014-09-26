@@ -103,6 +103,8 @@ Semaphore::V()
 // Dummy functions -- so we can compile our later assignments 
 // Note -- without a correct implementation of Condition::Wait(), 
 // the test case in the network assignment won't work!
+#ifdef changed
+
 Lock::Lock(const char* debugName) {
   name = debugName;
 }
@@ -154,3 +156,4 @@ void Condition::Broadcast(Lock* conditionLock) {
     thread=(Thread *) queue->Remove();    
   }
 }
+#endif

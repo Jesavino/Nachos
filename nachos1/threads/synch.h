@@ -22,8 +22,10 @@
 #include "list.h"
 #include <new>
 
+#ifdef changed
 #include "interrupt.h"
 #include <sys/types.h>
+#endif
 
 // The following class defines a "semaphore" whose value is a non-negative
 // integer.  The semaphore has only two operations P() and V():
@@ -83,8 +85,10 @@ class Lock {
 
   private:
     const char* name;				// for debugging
+    #ifdef changed
     IntStatus oldLevel;
     pid_t pid;
+    #endif
     // plus some other stuff you'll need to define
 };
 
@@ -137,7 +141,9 @@ class Condition {
 
   private:
     const char* name;
+    #ifdef changed
     List *queue;
+    #endif
     // plus some other stuff you'll need to define
 };
 #endif // SYNCH_H
