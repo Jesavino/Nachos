@@ -4,24 +4,25 @@
 
 #include <iostream>
 #include "synch.h"
+#include <string.h>
 
-class Locktest {
+class LockTest {
 public:
-  Locktest();
+  LockTest();
 
   void consumerThread(int buffer);
   void producerThread(int buffer);
 
 private:
-  Condition full;
-  Condition empty;
-  Lock pLock;
-  Lock cLock;
+  Condition *full;
+  Condition *empty;
+  Lock *pLock;
+  Lock *cLock;
   int n, m, i, size, inBuffer;;
 
   
-void LockTest();
-}
+  void testStart();
+};
 
 #endif
 #endif

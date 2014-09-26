@@ -25,9 +25,10 @@
 #include "synch.h"
 #include "system.h"
 
+#ifdef CHANGED
 #include <unistd.h>
 #include <sys/types.h>
-
+#endif
 //----------------------------------------------------------------------
 // Semaphore::Semaphore
 // 	Initialize a semaphore, so that it can be used for synchronization.
@@ -103,13 +104,16 @@ Semaphore::V()
 // Dummy functions -- so we can compile our later assignments 
 // Note -- without a correct implementation of Condition::Wait(), 
 // the test case in the network assignment won't work!
-#ifdef changed
+#ifdef CHANGED
 
 Lock::Lock(const char* debugName) {
   name = debugName;
 }
+
 Lock::~Lock() {
+
 }
+
 void Lock::Acquire() {
   oldLevel = interrupt->SetLevel(IntOff);
   pid = getpid();
@@ -128,6 +132,7 @@ Condition::Condition(const char* debugName) {
   name = debugName;
   queue = new(std::nothrow) List;
 }
+
 Condition::~Condition() { }
 
 void Condition::Wait(Lock* conditionLock) { 

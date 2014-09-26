@@ -22,7 +22,7 @@
 #include "list.h"
 #include <new>
 
-#ifdef changed
+#ifdef CHANGED
 #include "interrupt.h"
 #include <sys/types.h>
 #endif
@@ -85,7 +85,7 @@ class Lock {
 
   private:
     const char* name;				// for debugging
-    #ifdef changed
+    #ifdef CHANGED
     IntStatus oldLevel;
     pid_t pid;
     #endif
@@ -141,7 +141,7 @@ class Condition {
 
   private:
     const char* name;
-    #ifdef changed
+    #ifdef CHANGED
     List *queue;
     #endif
     // plus some other stuff you'll need to define

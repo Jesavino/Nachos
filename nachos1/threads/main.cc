@@ -53,6 +53,10 @@
 #include "utility.h"
 #include "system.h"
 
+#ifdef CHANGED
+#include "grouptest.h"
+#endif
+
 // External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -85,6 +89,10 @@ main(int argc, char **argv)
     
 #ifdef THREADS
     ThreadTest();
+#endif
+
+#ifdef CHANGED
+    LockTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
