@@ -82,6 +82,7 @@ class Lock {
     const char* name;				// for debugging
     #ifdef CHANGED
     int key;
+    static const int FREE = 1, BUSY = 0;
     Thread * threadWithLock;
     List * queue;
     #endif
