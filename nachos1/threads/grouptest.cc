@@ -12,12 +12,13 @@ void consumerThread(int buffer) {
   
   while (1) {
     cLock->Acquire();
-    if (inBuffer == 0) empty->Wait(cLock);
+    while (inBuffer == 0) empty->Wait(cLock);
     std::cout << buff[conBuff];
     inBuffer--;
     conBuff = (conBuff + 1) % bufferSize;
     cLock->Release();
-    full->Signal(pLock);
+
+    if (inBuffer == 1) full->Signal(pLock);
     
   }
 }
@@ -28,14 +29,14 @@ void producerThread(int buffer) {
 
   while (1){
     pLock->Acquire();
-    if (inBuffer == bufferSize) full->Wait(pLock);
+    while (inBuffer == bufferSize) full->Wait(pLock);
     buff[prodBuff] = hello[helloBuff];
     inBuffer++;
-    prodBuff = (prodBuff + 1) %bufferSize;
+    prodBuff = (prodBuff + 1) % bufferSize;
     helloBuff = (helloBuff + 1) % strlen(hello);
     
     pLock->Release();
-    empty->Signal(cLock);
+    if ( inBuffer == bufferSize - 1) empty->Signal(cLock);
   }
   
 }
