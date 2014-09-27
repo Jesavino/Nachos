@@ -33,7 +33,7 @@ void consumerThread(int buffer) {
 void producerThread(int buffer) {
   DEBUG('t', "in producer");
   char * buff = (char *) buffer;
-  char * hello = "Hello world";
+  char * hello = (char *)"Hello world";
 
   while (1){
     if (loopCount >= 1) break;
@@ -72,8 +72,8 @@ void lockTestStart() {
   int i;
   for (i = 0; i < 5; i++ ) {
     //    char numStr[2];
-    char * strConsumer = "consumer";
-    char * strProducer = "producer";
+    char * strConsumer = (char *)"consumer";
+    char * strProducer = (char *)"producer";
     //sprintf(numStr, "%d", i);
     //char * strConsumer = strcat(con, numStr);
     //char * strProducer = strcat(prod, numStr);
