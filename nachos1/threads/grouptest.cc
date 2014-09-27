@@ -26,6 +26,7 @@ void producerThread(int buffer) {
   char * buff = (char *) buffer;
   char * hello = "Hello world";
   int size = 2;
+
   while (1){
     pLock->Acquire();
     if (inBuffer == size) full->Wait(pLock);
@@ -55,8 +56,8 @@ void lockTestStart() {
   //create producer consumer
   char buffer[size];
   char * pbuffer = buffer;
-  Thread * consumer = new(std::nothrow) Thread("consumer");
-  Thread * producer = new(std::nothrow) Thread("producer");
+  Thread * consumer = new(std::nothrow) Thread("consumerThread");
+  Thread * producer = new(std::nothrow) Thread("producerThread");
 
   consumer->Fork(consumerThread, (int ) pbuffer);
   producer->Fork(producerThread, (int ) pbuffer);
