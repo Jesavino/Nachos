@@ -22,11 +22,6 @@
 #include "list.h"
 #include <new>
 
-#ifdef CHANGED
-#include "interrupt.h"
-#include <sys/types.h>
-#endif
-
 // The following class defines a "semaphore" whose value is a non-negative
 // integer.  The semaphore has only two operations P() and V():
 //

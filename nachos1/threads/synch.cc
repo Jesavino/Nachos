@@ -113,7 +113,7 @@ Lock::Lock(const char* debugName) {
 }
 
 Lock::~Lock() {
-
+  delete queue;
 }
 
 void Lock::Acquire() {
@@ -152,7 +152,9 @@ Condition::Condition(const char* debugName) {
   queue = new(std::nothrow) List;
 }
 
-Condition::~Condition() { }
+Condition::~Condition() { 
+  delete queue;
+}
 
 void Condition::Wait(Lock* conditionLock) { 
 
