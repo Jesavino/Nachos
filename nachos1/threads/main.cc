@@ -53,11 +53,11 @@
 #include "utility.h"
 #include "system.h"
 
+// External functions used by this file
+
 #ifdef CHANGED
 extern void lockTestStart(void);
 #endif
-
-// External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
@@ -91,12 +91,19 @@ main(int argc, char **argv)
     ThreadTest();
 #endif
 
-#ifdef CHANGED
-    lockTestStart();
-#endif
-
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
+
+	#ifdef CHANGED
+	if (!strcmp(*argv, "-P")) {
+	  argv++;
+	  argc--;
+	  if (!strcmp(*argv, "2")) {
+	    lockTestStart();
+	  }
+	}
+	#endif
+
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
 #ifdef USER_PROGRAM
