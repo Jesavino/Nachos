@@ -108,6 +108,8 @@ Semaphore::V()
 
 Lock::Lock(const char* debugName) {
   name = debugName;
+  key = 1;
+  queue = new(std::nothrow) List;
 }
 
 Lock::~Lock() {
@@ -115,17 +117,34 @@ Lock::~Lock() {
 }
 
 void Lock::Acquire() {
-  oldLevel = interrupt->SetLevel(IntOff);
-  pid = getpid();
+  IntStatus oldLevel = interrupt->SetLevel(IntOff);
+  int lockVal = key;
+  while (lockVal == 0) {
+    queue->Append((void *)currentThread);
+    currentThread->Sleep();
+  }
+  key = 0;
+  threadWithLock = currentThread;
+  (void) interrupt->SetLevel(oldLevel);
 }
 
 void Lock::Release() {
-  if (isHeldByCurrentThread())
-    interrupt->SetLevel(oldLevel);
+  Thread * thread;
+  IntStatus oldLevel = interrupt->SetLevel(IntOff);
+  
+  while (!isHeldByCurrentThread() ) {
+    currentThread->Sleep();
+  }
+
+  thread = (Thread *)queue->Remove();
+  if (thread != NULL) scheduler->ReadyToRun(thread);
+  key = 1;
+
+  (void) interrupt->SetLevel(oldLevel);
 }
 
 bool Lock::isHeldByCurrentThread(){	// true if the current thread
-  return pid == getpid();
+  return currentThread == threadWithLock;
 }
 
 Condition::Condition(const char* debugName) { 

@@ -86,8 +86,9 @@ class Lock {
   private:
     const char* name;				// for debugging
     #ifdef CHANGED
-    IntStatus oldLevel;
-    pid_t pid;
+    int key;
+    Thread * threadWithLock;
+    List * queue;
     #endif
     // plus some other stuff you'll need to define
 };
