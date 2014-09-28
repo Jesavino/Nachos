@@ -138,11 +138,12 @@ Lock::~Lock() {
 void Lock::Acquire() {
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   int lockVal = key;
-
+  
   while (lockVal == BUSY) {
+    lockVal = key;
     queue->Append((void *)currentThread);
     currentThread->Sleep();
-  }
+  }    
 
   key = BUSY;
   threadWithLock = currentThread;

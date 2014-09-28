@@ -8,42 +8,42 @@ Lock *cLock;
 int prodBuff, helloBuff, conBuff, bufferSize;
 int loopCount, numLoops = 20;
 char * buff;
+char * hello;
 
-void consumerThread(int buffer) {
+void consumerThread(int threadNum) {
   DEBUG('t', "in consumer\n");
   
   while (1) {
     cLock->Acquire();
     while (conBuff == prodBuff) empty->Wait(cLock);
     char ch = buff[conBuff];
-    buff[conBuff] = '\0';
     conBuff = (conBuff + 1) % bufferSize;
     if (conBuff == 0) {
       loopCount++;
     }
-    full->Signal(pLock);
     cLock->Release();
+    full->Signal(pLock);
 
+    //printf("Thread %d output '%c'\n", threadNum, ch);
     printf("%c", ch);
-    if (ch == 'd') printf("\n");
+    //    if (ch == 'd') printf("\n");
     if (loopCount >= numLoops) break;
   }
 }
   
-void producerThread(int buffer) {
+void producerThread(int threadNum) {
   DEBUG('t', "in producer\n");
-  char * hello = (char *)"Hello world";
 
   while (1){
     pLock->Acquire();
 
-    while ((prodBuff + 1) % bufferSize == conBuff) full->Wait(pLock);
+    while (((prodBuff + 1) % bufferSize) == conBuff) full->Wait(pLock);
     buff[prodBuff] = hello[helloBuff];
     prodBuff = (prodBuff + 1) % bufferSize;
     helloBuff = (helloBuff + 1) % strlen(hello);
-    empty->Signal(cLock);
 
     pLock->Release();
+    empty->Signal(cLock);
     if (loopCount >= numLoops) break;
 
   }
@@ -60,10 +60,11 @@ void lockTestStart() {
   prodBuff = 0;
   helloBuff = 0;
   conBuff = 0;
-  bufferSize = 3;
+  bufferSize = 5;
   loopCount = 0;
-  int numThreads = 3;
+  int numThreads = 2;
 
+  hello = (char *)"Hello world";
   char buffer[bufferSize];
   buff = buffer;
 
