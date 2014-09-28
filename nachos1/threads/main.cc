@@ -19,7 +19,7 @@
 //    -d causes certain debugging messages to be printed (cf. utility.h)
 //    -rs causes Yield to occur at random (but repeatable) spots
 //    -z prints the copyright message
-//
+
 //  USER_PROGRAM
 //    -s causes user programs to be executed in single-step mode
 //    -x runs a user program
@@ -55,6 +55,7 @@
 
 #ifdef CHANGED
 extern void lockTestStart(void);
+extern void PriorityTest(void);
 #endif
 
 // External functions used by this file
@@ -92,7 +93,8 @@ main(int argc, char **argv)
 #endif
 
 #ifdef CHANGED
-    lockTestStart();
+    //lockTestStart();
+	PriorityTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
