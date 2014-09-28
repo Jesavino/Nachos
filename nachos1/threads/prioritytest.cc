@@ -29,7 +29,7 @@ PriorityTest() {
 	int num;
 	
 	// create 5 processess with individual priorities
-	for ( num = 0 ; num < 5 ; num++ ) {
+	for ( num = 1 ; num < 6 ; num++ ) {
 		Thread *t = new(std::nothrow) Thread((char *) num , num);
 		toGo->Append((void *)t);
 	}
@@ -39,6 +39,9 @@ PriorityTest() {
 		t->Fork(PriorityThread , num);
 		num++;
 	}
+	t = new(std::nothrow) Thread("Simple" , 3);
+	t->Fork(PriorityThread , 6);
+
 	PriorityThread(5);
 }
 #endif

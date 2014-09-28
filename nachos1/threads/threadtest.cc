@@ -42,7 +42,7 @@ ThreadTest()
 {
     DEBUG('t', "Entering SimpleTest");
 
-    Thread *t = new(std::nothrow) Thread("forked thread", 2);
+    Thread *t = new(std::nothrow) Thread("forked thread");
 
     t->Fork(SimpleThread, 1);
     SimpleThread(0);

@@ -35,7 +35,7 @@
 Thread::Thread(const char* threadName)
 {
     name = threadName;
-	priority = -1;
+	priority = 0;
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
@@ -52,8 +52,8 @@ Thread::Thread(const char* threadName)
 Thread::Thread(const char* threadName, int priorityLevel) 
 {
 	name = threadName;
-	if (priorityLevel < 0)
-		priority = 0;
+	if (priorityLevel < 1)
+		priority = 1;
 	else
 		priority = priorityLevel;
 	stackTop = NULL;
@@ -203,11 +203,16 @@ Thread::Yield ()
     
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
-    nextThread = scheduler->FindNextToRun();
+    /*nextThread = scheduler->FindNextToRun();
     if (nextThread != NULL) {
-	scheduler->ReadyToRun(this);
-	scheduler->Run(nextThread);
+		scheduler->ReadyToRun(this);
+		nextThread = scheduler->FindNextToRun();
+		scheduler->Run(nextThread);
     }
+	*/
+	scheduler->ReadyToRun(this);
+	nextThread = scheduler->FindNextToRun();
+	scheduler->Run(nextThread);
     (void) interrupt->SetLevel(oldLevel);
 }
 

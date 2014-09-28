@@ -1,0 +1,4 @@
+Number of priorities (2 or more, does it matter?)
+Prove the answers to the questions through implementation or just answer in README?
+Buffer access (loop or linear?)
+Why interupt needs the priority level?
