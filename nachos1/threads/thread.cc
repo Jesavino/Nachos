@@ -43,6 +43,24 @@ Thread::Thread(const char* threadName)
 #endif
 }
 
+//---------------------------------------------------------------------
+// Thread::Thread
+// Same as above, just sets a priority to what is passed in
+//
+//---------------------------------------------------------------------
+Thread::Thread(const char* threadName, int priorityLevel) 
+{
+	name = threadName;
+	priority = priorityLevel;
+	stackTop = NULL;
+	stack = NULL;
+	stack = NULL;
+	status = JUST_CREATED;
+#ifdef USER_PROGRAM
+	space = null;
+#endif
+}
+
 //----------------------------------------------------------------------
 // Thread::~Thread
 // 	De-allocate a thread.

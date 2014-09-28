@@ -82,6 +82,7 @@ class Thread {
 
   public:
     Thread(const char* debugName);		// initialize a Thread 
+	Thread(const char* debugName, int priorityLevel); // initialize a Thread with a priority
     ~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -110,6 +111,8 @@ class Thread {
 					// (If NULL, don't deallocate stack)
     ThreadStatus status;		// ready, running or blocked
     const char* name;
+
+	int priority; // used for priority scheduling 
 
     void StackAllocate(VoidFunctionPtr func, int arg);
     					// Allocate a stack for thread.
