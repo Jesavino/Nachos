@@ -43,7 +43,7 @@ Thread::Thread(const char* threadName)
     space = NULL;
 #endif
 }
-
+#ifdef CHANGED
 //---------------------------------------------------------------------
 // Thread::Thread
 // Same as above, just sets a priority to what is passed in
@@ -64,7 +64,7 @@ Thread::Thread(const char* threadName, int priorityLevel)
 	space = null;
 #endif
 }
-
+#endif
 //----------------------------------------------------------------------
 // Thread::~Thread
 // 	De-allocate a thread.

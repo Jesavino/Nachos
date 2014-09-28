@@ -15,7 +15,8 @@ PriorityThread(int processName) {
 	int num;
 
 	for ( num = 0 ; num < 5 ; num++ ) {
-		printf("*** Thread %d looped %d times!\n", processName , num);
+		printf("*** Thread %d with priority %d looped %d times!\n", 
+			processName ,currentThread->getPriority(), num);
 		currentThread->Yield();
 	}
 }

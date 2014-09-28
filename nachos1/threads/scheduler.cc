@@ -49,7 +49,7 @@ Scheduler::~Scheduler()
 //
 //	"thread" is the thread to be put on the ready list.
 //----------------------------------------------------------------------
-
+#ifdef CHANGED
 void
 Scheduler::ReadyToRun (Thread *thread)
 {
@@ -74,7 +74,7 @@ Scheduler::FindNextToRun ()
 	long long unsigned * sortKey = NULL;
     return (Thread *)readyList->SortedRemove(sortKey);
 }
-
+#endif
 //----------------------------------------------------------------------
 // Scheduler::Run
 // 	Dispatch the CPU to nextThread.  Save the state of the old thread,
