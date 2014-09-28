@@ -35,6 +35,7 @@
 Thread::Thread(const char* threadName)
 {
     name = threadName;
+	priority = -1;
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
@@ -51,7 +52,10 @@ Thread::Thread(const char* threadName)
 Thread::Thread(const char* threadName, int priorityLevel) 
 {
 	name = threadName;
-	priority = priorityLevel;
+	if (priorityLevel < 0)
+		priority = 0;
+	else
+		priority = priorityLevel;
 	stackTop = NULL;
 	stack = NULL;
 	stack = NULL;

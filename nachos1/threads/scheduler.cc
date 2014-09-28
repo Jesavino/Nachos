@@ -54,9 +54,10 @@ void
 Scheduler::ReadyToRun (Thread *thread)
 {
     DEBUG('t', (char *) "Putting thread %s on ready list.\n", thread->getName());
-
+	int priority = thread->getPriority();
     thread->setStatus(READY);
-    readyList->Append((void *)thread);
+
+	readyList->SortedInsert((void *)thread , priority);
 }
 
 //----------------------------------------------------------------------
@@ -70,7 +71,8 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-    return (Thread *)readyList->Remove();
+	long long unsigned * sortKey;
+    return (Thread *)readyList->SortedRemove(sortKey);
 }
 
 //----------------------------------------------------------------------

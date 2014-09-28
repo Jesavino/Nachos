@@ -58,7 +58,7 @@ class List {
     void SortedInsert(void *item, long long unsigned sortKey); // Put item into list
     void *SortedRemove(long long unsigned *keyPtr);            // Remove first item from list
   private:
-    ListElement *first;  	// Head of the list, NULL if list is empty
+   ListElement *first;  	// Head of the list, NULL if list is empty
     ListElement *last;		// Last element of list
 };
 
