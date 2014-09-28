@@ -5,8 +5,8 @@ Condition *full;
 Condition *empty;
 Lock *pLock;
 Lock *cLock;
-int prodBuff, helloBuff, conBuff, bufferSize;
-int loopCount, numLoops = 20;
+int prodBuff, helloBuff, conBuff, BUFFERSIZE = 5;
+int loopCount, numLoops = 200;
 char * buff;
 char * hello;
 
@@ -15,14 +15,19 @@ void consumerThread(int threadNum) {
   
   while (1) {
     cLock->Acquire();
+    
     while (conBuff == prodBuff) empty->Wait(cLock);
     char ch = buff[conBuff];
-    conBuff = (conBuff + 1) % bufferSize;
+    conBuff = (conBuff + 1) % BUFFERSIZE;
+    // only to end the infinite loop after numLoops times
     if (conBuff == 0) {
       loopCount++;
     }
+    // 
+    
+    //if (conBuff == ((prodBuff + 1) % bufferSize))
+      full->Signal(pLock);
     cLock->Release();
-    full->Signal(pLock);
 
     //printf("Thread %d output '%c'\n", threadNum, ch);
     printf("%c", ch);
@@ -33,17 +38,18 @@ void consumerThread(int threadNum) {
   
 void producerThread(int threadNum) {
   DEBUG('t', "in producer\n");
-
   while (1){
     pLock->Acquire();
 
-    while (((prodBuff + 1) % bufferSize) == conBuff) full->Wait(pLock);
+    while (((prodBuff + 1) % BUFFERSIZE) == conBuff) full->Wait(pLock);
     buff[prodBuff] = hello[helloBuff];
-    prodBuff = (prodBuff + 1) % bufferSize;
+    //printf("Thread %d input %c\n", threadNum, buff[prodBuff]);
+    prodBuff = (prodBuff + 1) % BUFFERSIZE;
     helloBuff = (helloBuff + 1) % strlen(hello);
 
+    //if (((prodBuff + 2) % bufferSize) == conBuff) 
+      empty->Signal(cLock);
     pLock->Release();
-    empty->Signal(cLock);
     if (loopCount >= numLoops) break;
 
   }
@@ -60,13 +66,12 @@ void lockTestStart() {
   prodBuff = 0;
   helloBuff = 0;
   conBuff = 0;
-  bufferSize = 5;
   loopCount = 0;
-  int numThreads = 2;
+  int numThreads = 5;
 
   hello = (char *)"Hello world";
-  char buffer[bufferSize];
-  buff = buffer;
+  //printf("%d\n", strlen(hello));
+  buff = new char[BUFFERSIZE];
 
   Thread * consumer[numThreads];
   Thread * producer[numThreads];

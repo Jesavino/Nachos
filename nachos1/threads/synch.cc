@@ -231,9 +231,8 @@ void Condition::Wait(Lock* conditionLock) {
 void Condition::Signal(Lock* conditionLock) { 
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
-  Thread *thread;
-  thread = (Thread *)queue->Remove();
-  if (thread != NULL)	   // make thread ready, consuming the V immediately
+  Thread * thread = (Thread *)queue->Remove();
+  if (thread != NULL)	   // make thread ready
     scheduler->ReadyToRun(thread);
   (void) interrupt->SetLevel(oldLevel);
 }
