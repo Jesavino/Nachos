@@ -71,7 +71,7 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-	long long unsigned * sortKey;
+	long long unsigned * sortKey = NULL;
     return (Thread *)readyList->SortedRemove(sortKey);
 }
 
