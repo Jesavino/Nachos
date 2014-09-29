@@ -160,19 +160,18 @@ void Lock::Acquire() {
 void Lock::Release() {
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
-  while (!isHeldByCurrentThread() ) {
-    currentThread->Sleep();
+  if (isHeldByCurrentThread()){
+    Thread * thread = (Thread *)queue->Remove();
+    
+    if (thread != NULL) {
+      scheduler->ReadyToRun(thread);
+    }
+    
+    key = FREE;
+    (void) interrupt->SetLevel(oldLevel);
   }
-
-  Thread * thread = (Thread *)queue->Remove();
-
-  if (thread != NULL) {
-    scheduler->ReadyToRun(thread);
-  }
-
-  key = FREE;
-  (void) interrupt->SetLevel(oldLevel);
 }
+
 
 //----------------------------------------------------------------------
 // Lock::isHeldByCurrentThread
