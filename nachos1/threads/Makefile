@@ -120,10 +120,10 @@ synch.o: ../threads/synch.cc /usr/include/stdc-predef.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.8/exception \
- /usr/include/c++/4.8/bits/atomic_lockfree_defines.h \
- ../machine/interrupt.h ../threads/list.h ../threads/system.h \
- ../threads/scheduler.h ../machine/stats.h ../machine/timer.h \
- ../threads/utility.h /usr/include/unistd.h /usr/include/bits/posix_opt.h \
+ /usr/include/c++/4.8/bits/atomic_lockfree_defines.h ../threads/system.h \
+ ../threads/scheduler.h ../machine/interrupt.h ../threads/list.h \
+ ../machine/stats.h ../machine/timer.h ../threads/utility.h \
+ /usr/include/unistd.h /usr/include/bits/posix_opt.h \
  /usr/include/bits/environments.h /usr/include/bits/confname.h \
  /usr/include/getopt.h
 synchlist.o: ../threads/synchlist.cc /usr/include/stdc-predef.h \
@@ -152,8 +152,7 @@ synchlist.o: ../threads/synchlist.cc /usr/include/stdc-predef.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.8/exception \
- /usr/include/c++/4.8/bits/atomic_lockfree_defines.h \
- ../machine/interrupt.h ../threads/list.h
+ /usr/include/c++/4.8/bits/atomic_lockfree_defines.h
 system.o: ../threads/system.cc /usr/include/stdc-predef.h \
  ../threads/copyright.h ../threads/system.h ../threads/utility.h \
  ../machine/sysdep.h ../threads/copyright.h /usr/include/stdlib.h \
@@ -209,10 +208,9 @@ thread.o: ../threads/thread.cc /usr/include/stdc-predef.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.8/exception \
- /usr/include/c++/4.8/bits/atomic_lockfree_defines.h \
- ../machine/interrupt.h ../threads/list.h ../threads/system.h \
- ../threads/scheduler.h ../machine/stats.h ../machine/timer.h \
- ../threads/utility.h
+ /usr/include/c++/4.8/bits/atomic_lockfree_defines.h ../threads/system.h \
+ ../threads/scheduler.h ../machine/interrupt.h ../threads/list.h \
+ ../machine/stats.h ../machine/timer.h ../threads/utility.h
 utility.o: ../threads/utility.cc /usr/include/stdc-predef.h \
  ../threads/copyright.h ../threads/utility.h ../machine/sysdep.h \
  ../threads/copyright.h /usr/include/stdlib.h /usr/include/features.h \
@@ -467,8 +465,7 @@ grouptest.o: ../threads/grouptest.cc /usr/include/stdc-predef.h \
  /usr/include/sys/sysmacros.h /usr/include/alloca.h \
  /usr/include/bits/stdlib-float.h /usr/include/libio.h \
  /usr/include/_G_config.h /usr/include/bits/stdio_lim.h \
- /usr/include/bits/sys_errlist.h /usr/include/string.h ../threads/list.h \
- ../machine/interrupt.h ../threads/list.h
+ /usr/include/bits/sys_errlist.h /usr/include/string.h ../threads/list.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above

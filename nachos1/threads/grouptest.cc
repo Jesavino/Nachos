@@ -5,60 +5,90 @@ Condition *full;
 Condition *empty;
 Lock *pLock;
 Lock *cLock;
-int prodBuff, helloBuff, conBuff, bufferSize, inBuffer;;
+int prodBuff, helloBuff, conBuff, BUFFERSIZE = 5;
+int loopCount, numLoops = 200;
+char * buff;
+char * hello;
 
-void consumerThread(int buffer) {
-  char * buff = (char *) buffer;
+void consumerThread(int threadNum) {
+  DEBUG('t', "in consumer\n");
   
   while (1) {
     cLock->Acquire();
-    if (inBuffer == 0) empty->Wait(cLock);
-    std::cout << buff[conBuff];
-    inBuffer--;
-    conBuff = (conBuff + 1) % bufferSize;
-    cLock->Release();
-    full->Signal(pLock);
     
+    while (conBuff == prodBuff) empty->Wait(cLock);
+    char ch = buff[conBuff];
+    conBuff = (conBuff + 1) % BUFFERSIZE;
+    // only to end the infinite loop after numLoops times
+    if (conBuff == 0) {
+      loopCount++;
+    }
+    // 
+    
+    //if (conBuff == ((prodBuff + 1) % bufferSize))
+      full->Signal(pLock);
+    cLock->Release();
+
+    //printf("Thread %d output '%c'\n", threadNum, ch);
+    printf("%c", ch);
+    //    if (ch == 'd') printf("\n");
+    if (loopCount >= numLoops) break;
   }
 }
   
-void producerThread(int buffer) {
-  char * buff = (char *) buffer;
-  char * hello = "Hello world";
-
+void producerThread(int threadNum) {
+  DEBUG('t', "in producer\n");
   while (1){
     pLock->Acquire();
-    if (inBuffer == bufferSize) full->Wait(pLock);
+
+    while (((prodBuff + 1) % BUFFERSIZE) == conBuff) full->Wait(pLock);
     buff[prodBuff] = hello[helloBuff];
-    inBuffer++;
-    prodBuff = (prodBuff + 1) %bufferSize;
+    //printf("Thread %d input %c\n", threadNum, buff[prodBuff]);
+    prodBuff = (prodBuff + 1) % BUFFERSIZE;
     helloBuff = (helloBuff + 1) % strlen(hello);
-    
+
+    //if (((prodBuff + 2) % bufferSize) == conBuff) 
+      empty->Signal(cLock);
     pLock->Release();
-    empty->Signal(cLock);
+    if (loopCount >= numLoops) break;
+
   }
   
 }
   
 void lockTestStart() {
+  DEBUG('t', "Entering LockTestStart\n");
   full = new(std::nothrow) Condition("producer");
   empty = new(std::nothrow) Condition("consumer");
   pLock = new(std::nothrow) Lock("pLock");
   cLock = new(std::nothrow) Lock("cLock");
+
   prodBuff = 0;
   helloBuff = 0;
   conBuff = 0;
-  bufferSize = 2;
-  inBuffer = 0;
-  DEBUG('t', "Entering Locktest\n");
-  //create producer consumer
-  char buffer[bufferSize];
-  char * pbuffer = buffer;
-  Thread * consumer = new(std::nothrow) Thread("consumerThread");
-  Thread * producer = new(std::nothrow) Thread("producerThread");
+  loopCount = 0;
+  int numThreads = 5;
 
-  consumer->Fork(consumerThread, (int ) pbuffer);
-  producer->Fork(producerThread, (int ) pbuffer);
+  hello = (char *)"Hello world";
+  //printf("%d\n", strlen(hello));
+  buff = new char[BUFFERSIZE];
+
+  Thread * consumer[numThreads];
+  Thread * producer[numThreads];
+
+  int i;
+
+  //create producer consumer
+  for (i = 1; i <= numThreads; i++ ) {
+    char * strConsumer = (char *)"consumer";
+    char * strProducer = (char *)"producer";
+
+    consumer[i] = new(std::nothrow) Thread(strConsumer);
+    producer[i] = new(std::nothrow) Thread(strProducer);
+
+    consumer[i]->Fork(consumerThread, i);
+    producer[i]->Fork(producerThread, i);
+  }
 
 }
 
