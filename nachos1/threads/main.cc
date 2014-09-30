@@ -57,6 +57,7 @@
 
 #ifdef CHANGED
 extern void lockTestStart(void);
+extern void elevatorTest(void);
 #endif
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -90,6 +91,8 @@ main(int argc, char **argv)
 #ifdef THREADS
     ThreadTest();
 #endif
+
+	elevatorTest();	
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
