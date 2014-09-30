@@ -137,10 +137,8 @@ Lock::~Lock() {
 
 void Lock::Acquire() {
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
-  int lockVal = key;
   
-  while (lockVal == BUSY) {
-    lockVal = key;
+  while (key == BUSY) {
     queue->Append((void *)currentThread);
     currentThread->Sleep();
   }    
@@ -158,18 +156,20 @@ void Lock::Acquire() {
 //----------------------------------------------------------------------
 
 void Lock::Release() {
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
-  if (isHeldByCurrentThread()){
-    Thread * thread = (Thread *)queue->Remove();
-    
-    if (thread != NULL) {
-      scheduler->ReadyToRun(thread);
-    }
-    
-    key = FREE;
-    (void) interrupt->SetLevel(oldLevel);
+  while (!isHeldByCurrentThread())
+    currentThread->Sleep();
+  thread = (Thread *)queue->Remove();
+  
+  if (thread != NULL) {
+    scheduler->ReadyToRun(thread);
   }
+  
+  key = FREE;
+  (void) interrupt->SetLevel(oldLevel);
+  
 }
 
 
@@ -228,9 +228,10 @@ void Condition::Wait(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Signal(Lock* conditionLock) { 
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
-  Thread * thread = (Thread *)queue->Remove();
+  thread = (Thread *)queue->Remove();
   if (thread != NULL)	   // make thread ready
     scheduler->ReadyToRun(thread);
   (void) interrupt->SetLevel(oldLevel);
@@ -244,9 +245,10 @@ void Condition::Signal(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Broadcast(Lock* conditionLock) { 
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
-  Thread * thread = (Thread * )queue->Remove();
+  thread = (Thread * )queue->Remove();
   while (thread != NULL) {
     scheduler->ReadyToRun(thread);
     thread = (Thread *) queue->Remove();    

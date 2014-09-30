@@ -5,8 +5,7 @@ Condition *full;
 Condition *empty;
 Lock *pLock;
 Lock *cLock;
-int prodBuff,conBuff, inBuffer = 0, BUFFERSIZE = 2;
-int loopCount, numLoops = 200;
+int prodBuff,conBuff, inBuffer, BUFFERSIZE = 10;
 char * buff;
 char * hello;
 char strConsumer[12];
@@ -14,39 +13,47 @@ char strProducer[12];
 
 void consumerThread(int threadNum) {
   DEBUG('t', "in consumer\n");
-  char ch = 'a';
-  while (ch != '\0') {
-    cLock->Acquire();
-    if (inBuffer == 0) empty->Wait(cLock);
+  char ch = '\0';
+  while (1) {
+    pLock->Acquire();
+
+    if (prodBuff == conBuff) {
+      empty->Wait(pLock);
+    }
     ch = buff[conBuff];
-    inBuffer--;
-    conBuff = (conBuff + 1) % BUFFERSIZE;
+    conBuff++;
+    if (conBuff >= BUFFERSIZE) conBuff = 0;
     
     full->Signal(pLock);
-    cLock->Release();
-    printf("%c", ch);
+    pLock->Release();
+    if (ch != 'z')
+      printf("*** Consumer %d:   ---> %c\n", threadNum, ch);
+    else break;
   }
-  printf("%d\n", inBuffer);
+  //printf("%d\n", inBuffer);
+  //printf("Consumer %d done\n", threadNum);
 
 }
   
 void producerThread(int threadNum) {
   DEBUG('t', "in producer\n");
-  int helloBuff = 0;
-  while (hello[helloBuff] != '\0') {
+  int helloBuff;
+  for (helloBuff = 0; hello[helloBuff] != '\0'; helloBuff++) {
+    printf("*** Producer %d: %c --->\n", threadNum, hello[helloBuff]);
     pLock->Acquire();
-    if (inBuffer == BUFFERSIZE) full->Wait(pLock);
-    buff[prodBuff] = hello[helloBuff];
-    inBuffer++;
-    prodBuff = (prodBuff + 1) % BUFFERSIZE;
-    //helloBuff = (helloBuff + 1) % strlen(hello);
-    helloBuff++;
-    empty->Signal(cLock);
-    
 
+    if ((prodBuff + 1) % BUFFERSIZE == conBuff) full->Wait(pLock);
+    //printf("Thread %d put %c\n", threadNum, hello[helloBuff]);
+    buff[prodBuff] = hello[helloBuff];
+    prodBuff++;
+    if (prodBuff >= BUFFERSIZE) prodBuff = 0;
+    empty->Signal(pLock);
     pLock->Release();
+    
   }
-  prodBuff = (prodBuff + 1) % BUFFERSIZE;
+  buff[prodBuff] = 'z';
+  //  prodBuff = (prodBuff + 1) % BUFFERSIZE
+  //printf("Producer %d done.\n", threadNum);
 }
   
 void lockTestStart() {
@@ -58,8 +65,8 @@ void lockTestStart() {
 
   prodBuff = 0;
   conBuff = 0;
-  loopCount = 0;
-  int numThreads = 1;
+  inBuffer = 0;
+  int numThreads = 2;
 
   hello = (char *)"Hello world";
   buff = new char[BUFFERSIZE];
