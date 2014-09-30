@@ -70,9 +70,6 @@ void consumerThread(int threadNum) {
     // so we know we can quit
     if (ch == 'd')  break;
   }
-  //printf("%d\n", inBuffer);
-  printf("Consumer %d done\n", threadNum);
-
 }
   
 //----------------------------------------------------------------------
@@ -120,16 +117,17 @@ void producerThread(int threadNum) {
     lock->Release();
     
   }
-  printf("Producer %d done.\n", threadNum);
 }
   
 //----------------------------------------------------------------------
 // lockTestStart()
 //     this function initializes the data and threads for use in the 
 //     producer consumer example.
+//     numConsumers and numProducers default to 4,
+//     but can be declared on the command line
 //----------------------------------------------------------------------
 
-void lockTestStart() {
+void lockTestStart( int numConsumers, int numProducers) {
   DEBUG('t', "Entering LockTestStart\n");
 
   // initialize the lock and condition variables
@@ -139,10 +137,6 @@ void lockTestStart() {
   // all indexes set to zero
   prodIndex = 0;
   conIndex = 0;
-
-  // define how many producers and how many consumers we want to make.
-  int numConsumers = 4;
-  int numProducers = 4;
 
   // initialize the buffers, one from which to get the data.
   hello = (char *)"Hello world";
