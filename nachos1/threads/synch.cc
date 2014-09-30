@@ -136,6 +136,8 @@ Lock::~Lock() {
 //----------------------------------------------------------------------
 
 void Lock::Acquire() {
+  //  printf("%s\n",currentThread->getName());
+  ASSERT(!isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
   while (key == BUSY) {
@@ -157,6 +159,7 @@ void Lock::Acquire() {
 
 void Lock::Release() {
   Thread * thread;
+  //  ASSERT(isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
   while (!isHeldByCurrentThread())
@@ -168,6 +171,7 @@ void Lock::Release() {
   }
   
   key = FREE;
+  threadWithLock = NULL;
   (void) interrupt->SetLevel(oldLevel);
   
 }
@@ -210,6 +214,7 @@ Condition::~Condition() {
 //----------------------------------------------------------------------
 
 void Condition::Wait(Lock* conditionLock) { 
+  ASSERT(conditionLock->isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
   conditionLock->Release();
@@ -228,6 +233,7 @@ void Condition::Wait(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Signal(Lock* conditionLock) { 
+  ASSERT(conditionLock->isHeldByCurrentThread());
   Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
@@ -245,6 +251,7 @@ void Condition::Signal(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Broadcast(Lock* conditionLock) { 
+  ASSERT(conditionLock->isHeldByCurrentThread());
   Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
