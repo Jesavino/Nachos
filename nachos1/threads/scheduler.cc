@@ -49,14 +49,15 @@ Scheduler::~Scheduler()
 //
 //	"thread" is the thread to be put on the ready list.
 //----------------------------------------------------------------------
-
+#ifdef CHANGED
 void
 Scheduler::ReadyToRun (Thread *thread)
 {
     DEBUG('t', (char *) "Putting thread %s on ready list.\n", thread->getName());
-
+	int priority = thread->getPriority();
     thread->setStatus(READY);
-    readyList->Append((void *)thread);
+
+	readyList->SortedInsert((void *)thread , priority);
 }
 
 //----------------------------------------------------------------------
@@ -70,9 +71,10 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-    return (Thread *)readyList->Remove();
+	long long unsigned * sortKey = NULL;
+    return (Thread *)readyList->SortedRemove(sortKey);
 }
-
+#endif
 //----------------------------------------------------------------------
 // Scheduler::Run
 // 	Dispatch the CPU to nextThread.  Save the state of the old thread,

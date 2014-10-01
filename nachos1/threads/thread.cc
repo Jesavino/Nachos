@@ -35,6 +35,7 @@
 Thread::Thread(const char* threadName)
 {
     name = threadName;
+	priority = 0;
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
@@ -42,7 +43,7 @@ Thread::Thread(const char* threadName)
     space = NULL;
 #endif
 }
-
+#ifdef CHANGED
 //---------------------------------------------------------------------
 // Thread::Thread
 // Same as above, just sets a priority to what is passed in
@@ -51,7 +52,10 @@ Thread::Thread(const char* threadName)
 Thread::Thread(const char* threadName, int priorityLevel) 
 {
 	name = threadName;
-	priority = priorityLevel;
+	if (priorityLevel < 1)
+		priority = 1;
+	else
+		priority = priorityLevel;
 	stackTop = NULL;
 	stack = NULL;
 	stack = NULL;
@@ -60,7 +64,7 @@ Thread::Thread(const char* threadName, int priorityLevel)
 	space = null;
 #endif
 }
-
+#endif
 //----------------------------------------------------------------------
 // Thread::~Thread
 // 	De-allocate a thread.
@@ -199,11 +203,16 @@ Thread::Yield ()
     
     DEBUG('t', "Yielding thread \"%s\"\n", getName());
     
-    nextThread = scheduler->FindNextToRun();
+    /*nextThread = scheduler->FindNextToRun();
     if (nextThread != NULL) {
-	scheduler->ReadyToRun(this);
-	scheduler->Run(nextThread);
+		scheduler->ReadyToRun(this);
+		nextThread = scheduler->FindNextToRun();
+		scheduler->Run(nextThread);
     }
+	*/
+	scheduler->ReadyToRun(this);
+	nextThread = scheduler->FindNextToRun();
+	scheduler->Run(nextThread);
     (void) interrupt->SetLevel(oldLevel);
 }
 

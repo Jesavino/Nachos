@@ -19,7 +19,7 @@
 //    -d causes certain debugging messages to be printed (cf. utility.h)
 //    -rs causes Yield to occur at random (but repeatable) spots
 //    -z prints the copyright message
-//
+
 //  USER_PROGRAM
 //    -s causes user programs to be executed in single-step mode
 //    -x runs a user program
@@ -57,7 +57,11 @@
 
 #ifdef CHANGED
 extern void lockTestStart(void);
+<<<<<<< HEAD
 extern void elevatorTest(void);
+=======
+extern void PriorityTest(void);
+>>>>>>> 68f27de770fe00982a943460867d046658f49c16
 #endif
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -92,7 +96,14 @@ main(int argc, char **argv)
     ThreadTest();
 #endif
 
+<<<<<<< HEAD
 	elevatorTest();	
+=======
+#ifdef CHANGED
+    //lockTestStart();
+	PriorityTest();
+#endif
+>>>>>>> 68f27de770fe00982a943460867d046658f49c16
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
 	argCount = 1;
