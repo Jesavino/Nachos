@@ -1,19 +1,19 @@
 #include "elevator_manager.h"
 
-ElevatorManager::ElevatorManager() {
+ElevatorManager::ElevatorManager(Lock * eMutex, Condition * eCond  ) {
 	pos = 0;
 	directionUp = 1; //initialized to 1st floor going up
 	busy = 0; // not busy
 	upcount = downcount = 0;
 	numFloors = 5;
 	int i;
-	elevator = new(std::nothrow) Condition("Elevator Condition");
+	elevator = eCond;
 	for (i = 0 ; i < numFloors ; i++) {
 		upsweep[i] = new(std::nothrow) Condition("UP CONDITION");
 		downsweep[i] = new(std::nothrow) Condition("DOWN CONDITION");
 		upwait[i] = downwait[i] = dest[i] = 0;
 	}
-	mutex = new(std::nothrow) Lock("mutex");
+	mutex = eMutex;
 
 }
 /*
@@ -39,19 +39,25 @@ ElevatorManager::ArrivingGoingFromTo( int aFloor , int bFloor) {
 */
 void
 ElevatorManager::ArrivingGoingFromTo(int aFloor , int bFloor) {
+	DEBUG('t' , "Arriving in Elevator Manager");
 	elevator->Signal(mutex);
-	if ( (pos < aFloor) && (pos < bFloor) ) {
+	if ( (pos <= aFloor) && (aFloor < bFloor) ) {
 		mutex->Acquire();
 		upcount++;
 		upwait[aFloor]++;
+		DEBUG('t' , "About to Go to sleep on mutex");
+		debugPrint();
 		upsweep[aFloor]->Wait(mutex);
 	} else {
 		downcount++;
 		downwait[aFloor]++;
+		debugPrint();
 		downsweep[aFloor]->Wait(mutex);
 	}
+	DEBUG('t' , "Woke Up Person From Mutex");
 	mutex->Acquire();
 	dest[bFloor]++;
+	elevator->Signal(mutex);
 	if(directionUp)
 		upsweep[bFloor]->Wait(mutex);
 	else
@@ -61,14 +67,20 @@ ElevatorManager::ArrivingGoingFromTo(int aFloor , int bFloor) {
 void 
 ElevatorManager::Travel() {
 	mutex->Acquire();
-	
+	printf("Got Mutex in Travel()\n");
+	debugPrint();
 	if (directionUp) {
+		printf("We see that Up: %d , Down: %d\n" , upcount , downcount);
 		if (upcount) {
+			printf("Going Up!\n");
 			next = find_nextUp(pos);		
 			pos = next;
+			printf("Moving to %d\n" , pos);
 			upcount -= dest[pos];
+			upwait[pos] = 0;
 			dest[pos] = 0;
 			upsweep[pos]->Broadcast(mutex);
+			elevator->Wait(mutex);
 			mutex->Release();
 			Travel();
 		} else {
@@ -76,6 +88,7 @@ ElevatorManager::Travel() {
 			next = find_nextDown(pos);
 			pos = next;
 			downcount -= dest[pos];
+			downwait[pos] = 0;
 			dest[pos] = 0;
 			downsweep[pos]->Broadcast(mutex);
 			mutex->Release();
@@ -88,6 +101,7 @@ ElevatorManager::Travel() {
 			next = find_nextUp(pos);
 			pos = next;
 			upcount -= dest[pos];
+			upwait[pos] = 0;
 			dest[pos] = 0;
 			upsweep[pos]->Broadcast(mutex);
 			mutex->Release();
@@ -96,6 +110,7 @@ ElevatorManager::Travel() {
 			next = find_nextDown(pos);
 			pos = next; 
 			downcount -= dest[pos];
+			downwait[pos] = 0;
 			dest[pos] = 0;
 			downsweep[pos]->Broadcast(mutex);
 			mutex->Release();
@@ -147,32 +162,44 @@ int
 ElevatorManager::find_nextUp(int position) {
 	int i,min;
 
-	for(i = position + 1 ; i < numFloors ; i++) {
+	for(i = position ; i < numFloors ; i++) {
 		if(upwait[i]) {
 			 min = i;
+			printf("Min is: %d\n" , min);
 			break;
 		}
 	}
-	for (i = position + 1 ; i < numFloors ; i++) {
+	
+	for (i = position  ; i < numFloors ; i++) {
 		if( dest[i] && i < min) return i; 
 	}
-	return i;
+	return min;
 }
 
 int 
 ElevatorManager::find_nextDown(int position) {
 	int i,min;
 
-	for (i = position - 1 ; i >= 0; i--) {
+	for (i = position  ; i >= 0; i--) {
 		if(downwait[i]) {
 			 min = i;
 			break;
 		}
 	}
-	for (i = position - 1 ; i >= 0; i--) {
+	for (i = position ; i >= 0; i--) {
 		if(dest[i] && i > min) return i;
 	}
-	return i;
+	return min;
 }
 
+void
+ElevatorManager::debugPrint() {
+	int i;
+	for(i = 0 ; i < numFloors ; i++ )
+		printf("upwait[%d] = %d downwait[%d] = %d dest[%d] = %d\n" ,
+			i, upwait[i] ,i , downwait[i] ,i, dest[i]);
+	
 
+
+
+}

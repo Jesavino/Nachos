@@ -20,8 +20,10 @@ class ElevatorManager {
 
 	int find_nextUp(int position);
 	int find_nextDown(int position);
+
+	void debugPrint();
   public:
-	ElevatorManager();
+	ElevatorManager(Lock * eMutex , Condition * eCond );
 	void ArrivingGoingFromTo(int aFloor, int toFloor);
 	void Travel();
 };
