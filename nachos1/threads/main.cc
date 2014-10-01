@@ -56,7 +56,7 @@
 // External functions used by this file
 
 #ifdef CHANGED
-extern void lockTestStart(void);
+extern void lockTestStart(int numConsumers, int numProducers);
 #endif
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -99,7 +99,16 @@ main(int argc, char **argv)
 	  argv++;
 	  argc--;
 	  if (!strcmp(*argv, "2")) {
-	    lockTestStart();
+	    int con = atoi(*(argv + 1));
+	    int prod = atoi(*(argv + 2));
+	    lockTestStart(con, prod);
+	  }
+	  if (!strcmp(*argv, "4")) {
+	    // call alarmteststart
+	  }
+
+	  if (!strcmp(*argv, "5")) {
+	    //call elevator test start
 	  }
 	}
 	#endif
