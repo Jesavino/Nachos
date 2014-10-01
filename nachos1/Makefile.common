@@ -49,13 +49,7 @@ THREAD_H =../threads/copyright.h\
 	../machine/sysdep.h\
 	../machine/stats.h\
 	../machine/timer.h\
-	../threads/grouptest.h\
-<<<<<<< HEAD
-	../threads/elevator_manager.h\
-	../threads/elevatorTest.h
-=======
-	../threads/prioritytest.h
->>>>>>> 68f27de770fe00982a943460867d046658f49c16
+	../threads/grouptest.h
 
 THREAD_C =../threads/main.cc\
 	../threads/list.cc\
@@ -70,23 +64,13 @@ THREAD_C =../threads/main.cc\
 	../machine/sysdep.cc\
 	../machine/stats.cc\
 	../machine/timer.cc\
-	../threads/grouptest.cc\
-<<<<<<< HEAD
-	../threads/elevator_manager.cc\
-	../threads/elevatorTest.cc
-=======
-	../threads/prioritytest.cc
->>>>>>> 68f27de770fe00982a943460867d046658f49c16
+	../threads/grouptest.cc
 
 THREAD_S = ../threads/switch.s
 
 THREAD_O =main.o list.o scheduler.o synch.o synchlist.o system.o thread.o \
 	utility.o threadtest.o interrupt.o stats.o sysdep.o timer.o\
-<<<<<<< HEAD
-	grouptest.o elevator_manager.o elevatorTest.o
-=======
-	grouptest.o prioritytest.o
->>>>>>> 68f27de770fe00982a943460867d046658f49c16
+	grouptest.o
 
 USERPROG_H = ../userprog/addrspace.h\
 	../userprog/bitmap.h\
