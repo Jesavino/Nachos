@@ -1,7 +1,7 @@
 #ifdef CHANGED
 #include "alarm.h"
 
-Alarm::Alarm(char * debugName) {
+Alarm::Alarm(const char * debugName) {
   name = debugName;
 }
 
@@ -13,7 +13,9 @@ void Alarm::GoToSleepFor(int howLong) {
 
 }
 
-
+void alarmTestStart(int numAlarms) {
+  printf("in alarmTest\n");
+}
 
 
 
