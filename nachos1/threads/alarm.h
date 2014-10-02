@@ -16,8 +16,6 @@ class Alarm{
   int sleepTime;
 
 
-
-
 };
 #endif
 #endif

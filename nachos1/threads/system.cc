@@ -18,6 +18,9 @@ Interrupt *interrupt;			// interrupt status
 Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
+#ifdef CHANGED
+Timer * myTimer;
+#endif
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -136,6 +139,11 @@ Initialize(int argc, char **argv)
     scheduler = new(std::nothrow) Scheduler();		// initialize the ready queue
     if (randomYield)				// start the timer (if needed)
 	timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
+
+#ifdef CHANGED
+    myTimer = new(std::nothrow) Timer(TimerInterruptHandler, 0, 0);
+#endif
+
     threadToBeDestroyed = NULL;
 
     // We didn't explicitly allocate the current thread we are running in.
@@ -189,6 +197,11 @@ Cleanup()
 #endif
     
     delete timer;
+    
+#ifdef CHANGED
+    delete myTimer;
+#endif
+
     delete scheduler;
     delete interrupt;
     
