@@ -89,8 +89,7 @@ main(int argc, char **argv)
     (void) Initialize(argc, argv);
     
 #ifdef THREADS
-    //ThreadTest();
-	elevatorTest();
+    ThreadTest();
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
@@ -103,7 +102,11 @@ main(int argc, char **argv)
 	  if (!strcmp(*argv, "2")) {
 	    lockTestStart();
 	  }
+		if (!strcmp(*argv, "5")) {
+			elevatorTest();
+		}
 	}
+	
 	#endif
 
         if (!strcmp(*argv, "-z"))               // print copyright

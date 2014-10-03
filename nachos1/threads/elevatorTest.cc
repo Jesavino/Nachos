@@ -4,26 +4,25 @@
 #include "system.h"
 #include <stdlib.h>
 
-int numPeople = 3;
+int numPeople = 6;
 Condition * elevator;
 ElevatorManager *manager;
 char personName[12];
 Lock * mutex;
 
 void personThread(int id) {
-	int i;
-	int curFloor = id; // each person starts on a different floor
 	//int count = 0;
+	int curFloor;
 	int start = curFloor = rand() % 5;
 	int finish = rand() % 5;
 	if (start == finish) 
 		finish = (finish+1)%5;
-		printf("I am person %d and I am calling from floor %d going to %d\n", id , curFloor , finish );
-		manager->ArrivingGoingFromTo(start , finish );
-		curFloor = finish;
-		printf("I am person %d and I got off on floor %d\n", id , curFloor);
-		//count++;
-		//currentThread->Yield();
+	printf("I am person %d and I am calling from floor %d going to %d\n", id , curFloor , finish );
+	manager->ArrivingGoingFromTo(start , finish , id );
+	curFloor = finish;
+	//printf("I am person %d and I got off on floor %d\n", id , curFloor);
+	elevator->Signal(mutex);
+	
 
 }
 
@@ -31,9 +30,11 @@ void elevatorThread(int id) {
 	
 	while(1) {
 		mutex->Acquire();
-		printf("Elevator Sleeping on Mutex\n");
-		elevator->Wait(mutex);
-		printf("Elevator Has woken up!\n");
+		if (!manager->checkIfPeopleWaiting() ) {
+			printf("Elevator Sleeping on Mutex\n");
+			elevator->Wait(mutex);
+		}
+		printf("Elevator working on requests!\n");
 		mutex->Release();
 		manager->Travel();
 

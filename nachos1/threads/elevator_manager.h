@@ -3,6 +3,7 @@
 #include "copyright.h"
 #include "thread.h"
 #include "synch.h"
+#include "limits.h"
 
 class ElevatorManager {
   private:
@@ -24,6 +25,7 @@ class ElevatorManager {
 	void debugPrint();
   public:
 	ElevatorManager(Lock * eMutex , Condition * eCond );
-	void ArrivingGoingFromTo(int aFloor, int toFloor);
+	void ArrivingGoingFromTo(int aFloor, int toFloor , int id);
 	void Travel();
+	int checkIfPeopleWaiting();
 };

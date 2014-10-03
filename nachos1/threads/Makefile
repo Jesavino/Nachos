@@ -493,7 +493,12 @@ elevator_manager.o: ../threads/elevator_manager.cc \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/os_defines.h \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/cpu_defines.h \
  /usr/include/c++/4.8/exception \
- /usr/include/c++/4.8/bits/atomic_lockfree_defines.h
+ /usr/include/c++/4.8/bits/atomic_lockfree_defines.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed/limits.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed/syslimits.h \
+ /usr/include/limits.h /usr/include/bits/posix1_lim.h \
+ /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
+ /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h
 elevatorTest.o: ../threads/elevatorTest.cc /usr/include/stdc-predef.h \
  ../threads/elevatorTest.h /usr/include/c++/4.8/iostream \
  /usr/include/c++/4.8/x86_64-suse-linux/bits/c++config.h \
@@ -573,9 +578,15 @@ elevatorTest.o: ../threads/elevatorTest.cc /usr/include/stdc-predef.h \
  /usr/include/bits/stdlib-float.h /usr/include/libio.h \
  /usr/include/_G_config.h /usr/include/bits/stdio_lim.h \
  /usr/include/bits/sys_errlist.h /usr/include/string.h ../threads/list.h \
- ../threads/elevator_manager.h ../threads/system.h ../threads/scheduler.h \
- ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
- ../machine/timer.h ../threads/utility.h
+ ../threads/elevator_manager.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed/limits.h \
+ /usr/lib64/gcc/x86_64-suse-linux/4.8/include-fixed/syslimits.h \
+ /usr/include/limits.h /usr/include/bits/posix1_lim.h \
+ /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
+ /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
+ ../threads/system.h ../threads/scheduler.h ../machine/interrupt.h \
+ ../threads/list.h ../machine/stats.h ../machine/timer.h \
+ ../threads/utility.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above
