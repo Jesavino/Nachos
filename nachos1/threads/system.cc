@@ -39,6 +39,9 @@ char diskname[50];
 PostOffice *postOffice;
 #endif
 
+#ifdef CHANGED
+extern void tick(int );
+#endif
 
 // External definition, to allow us to take a pointer to this function
 extern void Cleanup();
@@ -141,7 +144,7 @@ Initialize(int argc, char **argv)
 	timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
 
 #ifdef CHANGED
-    myTimer = new(std::nothrow) Timer(TimerInterruptHandler, 0, 0);
+    myTimer = new(std::nothrow) Timer(tick, 0, false);
 #endif
 
     threadToBeDestroyed = NULL;
