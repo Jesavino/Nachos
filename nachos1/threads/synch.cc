@@ -248,7 +248,7 @@ void Condition::Signal(Lock* conditionLock) {
 
   // thread with the lock is the only one that can perform condition 
   // methods on it
-  ASSERT(conditionLock->isHeldByCurrentThread());
+  //  ASSERT(conditionLock->isHeldByCurrentThread());
   Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 

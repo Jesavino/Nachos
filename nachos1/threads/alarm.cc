@@ -3,20 +3,19 @@
 
 char strAlarm[12];
 int systime = 0;
-Condition * go;
 Lock * mutex;
 struct SCB {
+  Condition * go;
   int wakeTime;
   struct SCB * next;
 };
 
-struct SCB *list;
+struct SCB * list;
 
 Alarm::Alarm(const char * debugName) {
   DEBUG('t', "in alarm");
   name = debugName;
   mutex = new(std::nothrow) Lock("mutex");
-  go = new(std::nothrow) Condition("go condition");
 }
 
 Alarm::~Alarm() {
@@ -25,21 +24,22 @@ Alarm::~Alarm() {
 
 void Alarm::GoToSleepFor(int howLong) {
   DEBUG('t', "in Alarm::GoToSleepFor()");
-  printf("in gotosleep\n");
   mutex->Acquire();
   struct SCB * mySCB;
   
   mySCB = new SCB;
+  mySCB->go = new(std::nothrow) Condition("SCB condition");
   mySCB->wakeTime = systime + howLong;
   //insert
   insert(mySCB);
-  go->Wait(mutex);
+  mySCB->go->Wait(mutex);
   printf("woke up\n");
   //remove first itme from lsit
   remove();
   delete mySCB;
-  if ( list != NULL) 
-    if (list->wakeTime >= systime) go->Signal(mutex);
+  if ( list != NULL && list->wakeTime <= systime) 
+      list->go->Signal(mutex);
+  printf("about to release\n");
   mutex->Release();
 }
 
@@ -47,12 +47,14 @@ void Alarm::insert(struct SCB * scb) {
   struct SCB * head = list;
   struct SCB * prev = head;
   if (head == NULL ) {
-    head = scb;
+    list = scb;
     return;
   }
-  while (scb->wakeTime < head->wakeTime && head != NULL) {
-    prev = head;
-    head = head->next;
+  else {
+    while (scb->wakeTime < head->wakeTime && head != NULL) {
+      prev = head;
+      head = head->next;
+    }
   }
   scb->next = head;
   prev->next = scb;
@@ -62,11 +64,18 @@ void Alarm::remove() {
   list = list->next;
 }
 
+
+void tick(int ) {
+  systime++;
+  if ( list != NULL && list->wakeTime <= systime) 
+      list->go->Signal(mutex);
+}
+
 void perAlarm(int howLong) {
-  printf("in peralarm thread\n");
+  //printf("in peralarm thread\n");
   Alarm * alarm = new(std::nothrow) Alarm("alarm");
-  alarm->GoToSleepFor(100);
-  printf("%llu\n", stats->totalTicks);
+  alarm->GoToSleepFor(howLong);
+  //printf("%llu\n", stats->totalTicks);
 }
 
 void alarmTestStart(int numAlarms) {
@@ -81,12 +90,6 @@ void alarmTestStart(int numAlarms) {
   }
 }
 
-void tick(int ) {
-  systime++;
-  if (list != NULL) 
-    go->Signal(mutex);
-
-}
 
 
 #endif
