@@ -4,28 +4,50 @@
 #include "thread.h"
 #include "synch.h"
 #include "limits.h"
+//#include <vector>
+
+// -------------------------------------------------------------------------
+// 
+// This class defines the ElevatorManager. It is responsible for the general
+// management of the elevator. It handles processing the requests for the 
+// elevator, in addition to the actual movement of the elevator. 
+//
+// --------------------------------------------------------------------------
+
+static const int numberOfFloors = 5;
 
 class ElevatorManager {
   private:
-	int pos, busy;
+	// state variables for position of the elevator and how many people are
+	// waiting / where they are going. 
+	int pos;
 	int directionUp; // 0 is down, 1 is up;
 	int upcount, downcount;
-	int numFloors;
 	int next;
-	int upwait[5] , downwait[5];
+	int upwait[numberOfFloors];
+	int downwait[numberOfFloors];
+	int dest[numberOfFloors]; 
+
+	// the conditions the elevator and people will be waiting on. 
 	Condition *elevator;
-	Condition *upsweep[5];
-	Condition *downsweep[5];
-	int dest[5];
+	Condition *downsweep[numberOfFloors];
+	Condition *upsweep[numberOfFloors];
 	Lock *mutex;
 
+	// internal functions used to find the next person waiting to be picked
+	// up or to be dropped off
 	int find_nextUp(int position);
 	int find_nextDown(int position);
 
+	// used for internal debugging only
 	void debugPrint();
   public:
 	ElevatorManager(Lock * eMutex , Condition * eCond );
+
+	// Handles requests for the elevator
 	void ArrivingGoingFromTo(int aFloor, int toFloor , int id);
+
+	// used to move the elevator
 	void Travel();
 	int checkIfPeopleWaiting();
 };
