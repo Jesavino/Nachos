@@ -6,6 +6,7 @@ Lock * alarmMutex = new(std::nothrow) Lock("AlarmLock");
 long long unsigned  systime = 0;
 unsigned int seed;
 int totalRun;
+Thread * keepAlive;
 struct SCB {
   Condition * go;
   long long unsigned wakeTime;
@@ -48,17 +49,19 @@ void Alarm::GoToSleepFor(int howLong) {
     insert(mySCB);
     mySCB->go->Wait(alarmMutex);
   }
-  //  remove();
+  remove();
   printf("woke up %s at %llu: Slept for %llu ticks\n", name, systime, 
 	 systime - (mySCB->wakeTime - (long long unsigned) howLong));
 
   delete mySCB->go;
   delete mySCB;
 
-  while (list != NULL && list->wakeTime <= systime) {
+  if (list != NULL && list->wakeTime <= systime) {
     list->go->Signal(alarmMutex);
-    list = list->next;
+    //    list = list->next;
   }
+
+  if (list == NULL)
   printf("%d threads have completed\n", ++totalRun);
 
   alarmMutex->Release();
@@ -106,16 +109,23 @@ void Alarm::remove() {
 
 void tick(int ) {
   systime = stats->totalTicks;
-  while ( list != NULL && list->wakeTime <= systime) {
+  if ( list != NULL && list->wakeTime <= systime) {
     //    printf("systime: %llu  waketime: %llu\n", systime, list->wakeTime);
     list->go->Signal(alarmMutex);
-    list = list->next;
+    //list = list->next;
     //    printf("in Tick()\n");
   }
   
 }
 
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+void foreverYield(int i) {
+  while (1) 
+    keepAlive->Yield();
+}
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
@@ -146,6 +156,8 @@ void alarmTestStart(int numAlarms) {
     alarm[i] = new(std::nothrow) Thread(strAlarm);
     alarm[i]->Fork(perAlarm, i);
   }
+  keepAlive = new(std::nothrow) Thread("keepAlive");
+  keepAlive->Fork(foreverYield, 0);
 }
 
 
