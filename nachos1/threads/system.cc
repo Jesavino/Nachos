@@ -19,7 +19,7 @@ Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
 #ifdef CHANGED
-Timer * myTimer;
+extern Timer *myTimer;
 #endif
 
 #ifdef FILESYS_NEEDED
@@ -37,10 +37,6 @@ Machine *machine;	// user program memory and registers
 #ifdef NETWORK
 char diskname[50];
 PostOffice *postOffice;
-#endif
-
-#ifdef CHANGED
-extern void tick(int );
 #endif
 
 // External definition, to allow us to take a pointer to this function
@@ -142,10 +138,6 @@ Initialize(int argc, char **argv)
     scheduler = new(std::nothrow) Scheduler();		// initialize the ready queue
     if (randomYield)				// start the timer (if needed)
 	timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
-
-#ifdef CHANGED
-    myTimer = new(std::nothrow) Timer(tick, 0, false);
-#endif
 
     threadToBeDestroyed = NULL;
 

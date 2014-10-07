@@ -70,6 +70,7 @@ void consumerThread(int threadNum) {
     // so we know we can quit
     if (ch == 'd')  break;
   }
+  printf("*** Consumer %d: Now quitting\n", threadNum);
 }
   
 //----------------------------------------------------------------------

@@ -66,6 +66,11 @@ extern void Print(char *file), PerformanceTest(void);
 extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
 
+#ifdef CHANGED
+extern void tick(int );
+Timer * myTimer;
+#endif
+
 //----------------------------------------------------------------------
 // main
 // 	Bootstrap the operating system kernel.  
@@ -107,6 +112,8 @@ main(int argc, char **argv)
 	  }
 	  if (!strcmp(*argv, "4")) {
 	    int numA = atoi(*(argv+1));
+
+	    myTimer = new(std::nothrow) Timer(tick, 0, false);
 	    alarmTestStart(numA);
 	  }
 
