@@ -246,9 +246,6 @@ void Condition::Wait(Lock* conditionLock) {
 
 void Condition::Signal(Lock* conditionLock) { 
 
-  // thread with the lock is the only one that can perform condition 
-  // methods on it
-  //  ASSERT(conditionLock->isHeldByCurrentThread());
   Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
@@ -268,9 +265,6 @@ void Condition::Signal(Lock* conditionLock) {
 
 void Condition::Broadcast(Lock* conditionLock) { 
 
-  // thread with the lock is the only one that can perform condition
-  // methods on it
-  ASSERT(conditionLock->isHeldByCurrentThread());
   Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
