@@ -44,8 +44,10 @@ void Alarm::GoToSleepFor(int howLong) {
 
   printf("in GoToSleepFor %s: sleeping for %d ticks at systime %llu waketime: %llu\n", 
 	 name, howLong, systime, mySCB->wakeTime);
-  insert(mySCB);
-  mySCB->go->Wait(alarmMutex);
+  while (mySCB->wakeTime > systime) {
+    insert(mySCB);
+    mySCB->go->Wait(alarmMutex);
+  }
   //  remove();
   printf("woke up %s at %llu: Slept for %llu ticks\n", name, systime, 
 	 systime - (mySCB->wakeTime - (long long unsigned) howLong));
@@ -104,7 +106,8 @@ void Alarm::remove() {
 
 void tick(int ) {
   systime = stats->totalTicks;
-  while (list != NULL && list->wakeTime <= systime) {
+  while ( list != NULL && list->wakeTime <= systime) {
+    //    printf("systime: %llu  waketime: %llu\n", systime, list->wakeTime);
     list->go->Signal(alarmMutex);
     list = list->next;
     //    printf("in Tick()\n");
