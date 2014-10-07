@@ -6,7 +6,7 @@
 #include <new>
 #include "stats.h"
 #include "synch.h"
-
+#include <stdlib.h>
 
 extern Statistics * stats;
 
