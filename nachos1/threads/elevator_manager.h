@@ -1,3 +1,4 @@
+#ifdef CHANGED
 // an implementation of the elevator
 
 #include "copyright.h"
@@ -51,3 +52,5 @@ class ElevatorManager {
 	void Travel();
 	int checkIfPeopleWaiting();
 };
+
+#endif

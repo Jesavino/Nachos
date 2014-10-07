@@ -82,8 +82,7 @@ class Thread {
 
   public:
     Thread(const char* debugName);		// initialize a Thread 
-	Thread(const char* debugName, int priorityLevel); // initialize a Thread with a priority
-    ~Thread(); 				// deallocate a Thread
+	~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
 					// is called

@@ -1,3 +1,4 @@
+#ifdef CHANGED
 #include "elevator_manager.h"
 
 ElevatorManager::ElevatorManager(Lock * eMutex, Condition * eCond ) {
@@ -222,3 +223,4 @@ int
 ElevatorManager::checkIfPeopleWaiting() {
 	return upcount + downcount;
 }
+#endif
