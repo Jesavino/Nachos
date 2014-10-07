@@ -56,7 +56,7 @@
 // External functions used by this file
 
 #ifdef CHANGED
-extern void lockTestStart(int numConsumers, int numProducers);
+extern void lockTestStart(int numConsumers, int numProducers, int sizeBuffer);
 extern void alarmTestStart(int numAlarms);
 extern void elevatorTest(int numPeople);
 #endif
@@ -67,7 +67,10 @@ extern void StartProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
 
 #ifdef CHANGED
+// declare the custom interrupt handler for the timer object.
 extern void tick(int );
+//timer will be allocated and created when it is determined
+// that the alarm clock tests will be run.
 Timer * myTimer;
 #endif
 
@@ -99,35 +102,45 @@ main(int argc, char **argv)
 #endif
 
     for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
-	argCount = 1;
-
-	#ifdef CHANGED
-	if (!strcmp(*argv, "-P")) {
-	  argv++;
-	  argc--;
-	  if (!strcmp(*argv, "2")) {
-	    int con = atoi(*(argv + 1));
-	    int prod = atoi(*(argv + 2));
-	    lockTestStart(con, prod);
-	  }
-	  if (!strcmp(*argv, "4")) {
-	    int numA = atoi(*(argv+1));
-
-	    myTimer = new(std::nothrow) Timer(tick, 0, false);
-	    alarmTestStart(numA);
-	  }
-
-	  if (!strcmp(*argv, "5")) {
-	    int people = atoi(*(argv + 1));
-	    elevatorTest(people);
-	  }
+      argCount = 1;
+      
+#ifdef CHANGED
+      // Handle command line arguments for Nachos problems.
+      // handled according to specs.
+      if (!strcmp(*argv, "-P")) {
+	argv++;
+	argc--;
+	if (!strcmp(*argv, "2")) {
+	  // there are arguments for the number of 
+	  // producers, consumers, and buffers when 
+	  // running tests for problem 2
+	  int con = atoi(*(argv + 1));
+	  int prod = atoi(*(argv + 2));
+	  int numBuff = atoi(*(argv + 3));
+	  lockTestStart(con, prod, numBuff);
 	}
-	#endif
-
-        if (!strcmp(*argv, "-z"))               // print copyright
-            printf (copyright);
+	if (!strcmp(*argv, "4")) {
+	  // argument corresponds to the number of alarms that will be created.
+	  int numAlarms = atoi(*(argv+1));
+	  
+	  // create a new timer interrupt handler that works with the alarm class
+	  myTimer = new(std::nothrow) Timer(tick, 0, false);
+	  alarmTestStart(numAlarms);
+	}
+	
+	if (!strcmp(*argv, "5")) {
+	  // argument corresponds to the number of people that will be getting
+	  // on the elevator
+	  int people = atoi(*(argv + 1));
+	  elevatorTest(people);
+	}
+      }
+#endif
+      
+      if (!strcmp(*argv, "-z"))               // print copyright
+	printf (copyright);
 #ifdef USER_PROGRAM
-        if (!strcmp(*argv, "-x")) {        	// run a user program
+      if (!strcmp(*argv, "-x")) {        	// run a user program
 	    ASSERT(argc > 1);
             StartProcess(*(argv + 1));
             argCount = 2;

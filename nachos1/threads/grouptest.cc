@@ -8,7 +8,7 @@ Condition *full;
 Condition *empty;
 Lock *lock;
 
-int prodIndex, conIndex, BUFFERSIZE = 5;
+int prodIndex, conIndex, BUFFERSIZE;
 char * buff;
 char * hello;
 
@@ -128,7 +128,7 @@ void producerThread(int threadNum) {
 //     but can be declared on the command line
 //----------------------------------------------------------------------
 
-void lockTestStart( int numConsumers, int numProducers) {
+void lockTestStart( int numConsumers, int numProducers, int sizeBuffer) {
   DEBUG('t', "Entering LockTestStart\n");
 
   // initialize the lock and condition variables
@@ -138,6 +138,7 @@ void lockTestStart( int numConsumers, int numProducers) {
   // all indexes set to zero
   prodIndex = 0;
   conIndex = 0;
+  BUFFERSIZE = sizeBuffer;
 
   // initialize the buffers, one from which to get the data.
   hello = (char *)"Hello world";

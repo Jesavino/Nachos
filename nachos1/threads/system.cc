@@ -19,6 +19,9 @@ Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
 #ifdef CHANGED
+// the new timer for the alarm clock problem is created only when we
+// specify that the tests for the alarm clock should be run
+// we declare it here so that we may delete the timer on system cleanup
 extern Timer *myTimer;
 #endif
 
@@ -194,6 +197,7 @@ Cleanup()
     delete timer;
     
 #ifdef CHANGED
+    // want to properly delete the custom timer on system cleanup
     delete myTimer;
 #endif
 
