@@ -137,7 +137,7 @@ Lock::~Lock() {
 
 void Lock::Acquire() {
   // the current thread should not already have the lock
-  ASSERT(!isHeldByCurrentThread());
+  //  ASSERT(!isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
   // the current thread should sleep until key is FREE

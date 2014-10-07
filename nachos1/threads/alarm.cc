@@ -2,91 +2,148 @@
 #include "alarm.h"
 
 char strAlarm[12];
-int systime = 0;
-Lock * alarmMutex;
+Lock * alarmMutex = new(std::nothrow) Lock("AlarmLock");
+long long unsigned  systime = 0;
+
 struct SCB {
   Condition * go;
-  int wakeTime;
+  long long unsigned wakeTime;
   struct SCB * next;
 };
 
 struct SCB * list;
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 Alarm::Alarm(const char * debugName) {
   DEBUG('t', "in alarm");
   name = debugName;
-  alarmMutex = new(std::nothrow) Lock("mutex");
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 Alarm::~Alarm() {
-
+  delete mutex;
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void Alarm::GoToSleepFor(int howLong) {
   DEBUG('t', "in Alarm::GoToSleepFor()");
   alarmMutex->Acquire();
+  printf("in GoToSleepFor %s: sleeping for %d ticks at systime %llu\n", name, howLong, systime);
+
   struct SCB * mySCB;
   
   mySCB = new SCB;
   mySCB->go = new(std::nothrow) Condition("SCB condition");
-  mySCB->wakeTime = systime + howLong;
+  mySCB->wakeTime = systime + (long long unsigned) howLong;
+
   //insert
   insert(mySCB);
   mySCB->go->Wait(alarmMutex);
-  printf("woke up\n");
-  //remove first itme from lsit
-  remove();
+  printf("woke up %s at %llu: Slept for %llu ticks\n", name, systime, 
+	 systime - (mySCB->wakeTime - (long long unsigned) howLong));
+
+  //remove first item from list
+  //  remove();
   delete mySCB;
-  if ( list != NULL && list->wakeTime <= systime) 
-      list->go->Signal(alarmMutex);
-  printf("about to release\n");
+  //  struct SCB * next = list;
+
+  //  if ( next != NULL && next->wakeTime <= systime) {
+  //   next->go->Signal(mutex);
+       //     next = next->next;
+  //}
+
+  //printf("about to release %s\n", name);
+
   alarmMutex->Release();
 }
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void Alarm::insert(struct SCB * scb) {
   struct SCB * head = list;
-  struct SCB * prev = head;
+
   if (head == NULL ) {
     list = scb;
     return;
   }
-  else {
-    while (scb->wakeTime < head->wakeTime && head != NULL) {
-      prev = head;
-      head = head->next;
-    }
+
+  else if (scb->wakeTime < list->wakeTime) {
+    scb->next = list;
+    list = scb;
   }
-  scb->next = head;
-  prev->next = scb;
+
+  else {
+    for(head = list; head->next != NULL; head=head->next) {
+      if (scb->wakeTime < head->next->wakeTime) {
+	scb->next = head->next;
+	head->next = scb;
+	return;
+      }
+    }
+    head->next = scb;
+  }
 }
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void Alarm::remove() {
   list = list->next;
 }
 
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void tick(int ) {
-  systime++;
-  if ( list != NULL && list->wakeTime <= systime) 
-      list->go->Signal(alarmMutex);
+  systime = stats->totalTicks;
+  
+  struct SCB * next = list;
+
+  //  if (next != NULL)
+  // printf("here waketime: %llu systime: %llu\n",next->wakeTime, systime);
+  while ( next != NULL && next->wakeTime <= systime) {
+    next->go->Signal(alarmMutex);
+      
+    next = next->next;
+    //remove();
+    list=list->next;
+  }
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void perAlarm(int howLong) {
   //printf("in peralarm thread\n");
-  Alarm * alarm = new(std::nothrow) Alarm("alarm");
-  alarm->GoToSleepFor(howLong);
+  char alarmStr[12];
+  sprintf(alarmStr, "%s %d", "Alarm", howLong);
+  Alarm * alarm = new(std::nothrow) Alarm(alarmStr);
+  alarm->GoToSleepFor(howLong * 10 + 1);
   //printf("%llu\n", stats->totalTicks);
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void alarmTestStart(int numAlarms) {
   printf("in alarmTest\n");
   
   int i;
   Thread * alarm[numAlarms];
+
   for (i = 0; i < numAlarms; i++) {
     sprintf(strAlarm, "%s%d", "Alarm", i);
     alarm[i] = new(std::nothrow) Thread(strAlarm);
-    alarm[i]->Fork(perAlarm, 1);
+    alarm[i]->Fork(perAlarm, i);
   }
 }
 
