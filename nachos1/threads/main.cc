@@ -58,6 +58,7 @@
 #ifdef CHANGED
 extern void lockTestStart(int numConsumers, int numProducers);
 extern void alarmTestStart(int numAlarms);
+extern void elevatorTest(int numPeople);
 #endif
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
@@ -107,11 +108,11 @@ main(int argc, char **argv)
 	  if (!strcmp(*argv, "4")) {
 	    int numA = atoi(*(argv+1));
 	    alarmTestStart(numA);
-	    // call alarmteststart
 	  }
 
 	  if (!strcmp(*argv, "5")) {
-	    //call elevator test start
+	    int people = atoi(*(argv + 1));
+	    elevatorTest(people);
 	  }
 	}
 	#endif

@@ -123,6 +123,7 @@ class Lock {
 
 class Condition {
   public:
+	Condition();
     Condition(const char* debugName);		// initialize condition to 
 					// "no one waiting"
     ~Condition();			// deallocate the condition

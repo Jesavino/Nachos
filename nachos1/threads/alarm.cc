@@ -3,7 +3,7 @@
 
 char strAlarm[12];
 int systime = 0;
-Lock * mutex;
+Lock * alarmMutex;
 struct SCB {
   Condition * go;
   int wakeTime;
@@ -15,7 +15,7 @@ struct SCB * list;
 Alarm::Alarm(const char * debugName) {
   DEBUG('t', "in alarm");
   name = debugName;
-  mutex = new(std::nothrow) Lock("mutex");
+  alarmMutex = new(std::nothrow) Lock("mutex");
 }
 
 Alarm::~Alarm() {
@@ -24,7 +24,7 @@ Alarm::~Alarm() {
 
 void Alarm::GoToSleepFor(int howLong) {
   DEBUG('t', "in Alarm::GoToSleepFor()");
-  mutex->Acquire();
+  alarmMutex->Acquire();
   struct SCB * mySCB;
   
   mySCB = new SCB;
@@ -32,15 +32,15 @@ void Alarm::GoToSleepFor(int howLong) {
   mySCB->wakeTime = systime + howLong;
   //insert
   insert(mySCB);
-  mySCB->go->Wait(mutex);
+  mySCB->go->Wait(alarmMutex);
   printf("woke up\n");
   //remove first itme from lsit
   remove();
   delete mySCB;
   if ( list != NULL && list->wakeTime <= systime) 
-      list->go->Signal(mutex);
+      list->go->Signal(alarmMutex);
   printf("about to release\n");
-  mutex->Release();
+  alarmMutex->Release();
 }
 
 void Alarm::insert(struct SCB * scb) {
@@ -68,7 +68,7 @@ void Alarm::remove() {
 void tick(int ) {
   systime++;
   if ( list != NULL && list->wakeTime <= systime) 
-      list->go->Signal(mutex);
+      list->go->Signal(alarmMutex);
 }
 
 void perAlarm(int howLong) {

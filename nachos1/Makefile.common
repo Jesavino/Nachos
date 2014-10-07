@@ -50,7 +50,9 @@ THREAD_H =../threads/copyright.h\
 	../machine/stats.h\
 	../machine/timer.h\
 	../threads/grouptest.h\
-	../threads/alarm.h
+	../threads/alarm.h\
+	../threads/elevator_manager.h\
+	../threads/elevatorTest.h
 
 THREAD_C =../threads/main.cc\
 	../threads/list.cc\
@@ -66,13 +68,15 @@ THREAD_C =../threads/main.cc\
 	../machine/stats.cc\
 	../machine/timer.cc\
 	../threads/grouptest.cc\
-	../threads/alarm.cc
+	../threads/alarm.cc\
+	../threads/elevator_manager.cc\
+	../threads/elevatorTest.cc
 
 THREAD_S = ../threads/switch.s
 
 THREAD_O =main.o list.o scheduler.o synch.o synchlist.o system.o thread.o \
 	utility.o threadtest.o interrupt.o stats.o sysdep.o timer.o\
-	grouptest.o alarm.o
+	grouptest.o alarm.o elevatorTest.o elevator_manager.o
 
 USERPROG_H = ../userprog/addrspace.h\
 	../userprog/bitmap.h\
