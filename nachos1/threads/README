@@ -16,7 +16,31 @@ Group Members: John Savino, Thom Matessich, John Cooper
 
 
 
-5.
+5. This program should be run by invoking ./nachos -P 5 [numberOfUsers] 
+	Currently, the number of floors is set in the elevator_manager.h file. 
+	This can be changed by changing the static const int numberOfPeople 	
+	
+	Our implemtation runs by having each person declare what floor they 
+	would like to get off on, and which floor they are currently on, for 
+	the user to see. These floors are generated randomly using a seed of 
+	10. The people declare when they enter the elevator, and when they 
+	get off the elevator. The elevator tells the user when it moves from
+	floor to floor. The elevator starts at floor 0 by default. 
 
+	To verify correctness, one needs to know the basic idea of the elevator 
+	paradigmn, where the elevator will pick people up in passes. So depending
+	on the number of people, the elevator will alternate upsweeps and downsweeps
+	as needed until all of the clients are served. This can be verified by
+	reading the output and visually confirming that people going up are 
+	picked up first, followed by people going down. 
+	
+	Due to the way nachos impelements threads, it is very difficult for the 
+	elevator to have to do more than one upsweep and one downsweep. THis
+	is because each person ends up declaring their intent before the elevator 
+	begins serving the requests. Multiple passes can be acheived by 
+	modifying interrupt times and number of passengers though. 
 
+	To note, when the random interupts are enabled, the output will become jumbled.
+	This is because it is possible for a person to be interuppted before 
+	stating that they have gotten off the elevator. 
 

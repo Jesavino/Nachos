@@ -14,7 +14,7 @@
 //
 // --------------------------------------------------------------------------
 
-static const int numberOfFloors = 5;
+static const int numberOfFloors = 3;
 
 class ElevatorManager {
   private:
