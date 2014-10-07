@@ -3,7 +3,7 @@
 
 char strAlarm[12];
 long long unsigned  systime = 0;
-Lock * mutex;
+Lock * mutex = new(std::nothrow) Lock("stupid fucking lock");
 
 struct SCB {
   Condition * go;
@@ -19,7 +19,6 @@ struct SCB * list;
 Alarm::Alarm(const char * debugName) {
   DEBUG('t', "in alarm");
   name = debugName;
-  mutex = new(std::nothrow) Lock("mutex");
 }
 
 //----------------------------------------------------------------------
@@ -51,14 +50,14 @@ void Alarm::GoToSleepFor(int howLong) {
 	 systime - (mySCB->wakeTime - (long long unsigned) howLong));
 
   //remove first item from list
-  remove();
+  //  remove();
   delete mySCB;
-  struct SCB * next = list;
+  //  struct SCB * next = list;
 
-  while ( next != NULL && next->wakeTime <= systime) {
-      next->go->Signal(mutex);
-      next = next->next;
-  }
+  //  if ( next != NULL && next->wakeTime <= systime) {
+  //   next->go->Signal(mutex);
+       //     next = next->next;
+  //}
 
   //printf("about to release %s\n", name);
 
@@ -107,12 +106,17 @@ void Alarm::remove() {
 
 void tick(int ) {
   systime = stats->totalTicks;
-
+  
   struct SCB * next = list;
 
+  //  if (next != NULL)
+  // printf("here waketime: %llu systime: %llu\n",next->wakeTime, systime);
   while ( next != NULL && next->wakeTime <= systime) {
       next->go->Signal(mutex);
+      
       next = next->next;
+      //remove();
+      list=list->next;
   }
 }
 
@@ -124,7 +128,7 @@ void perAlarm(int howLong) {
   char alarmStr[12];
   sprintf(alarmStr, "%s %d", "Alarm", howLong);
   Alarm * alarm = new(std::nothrow) Alarm(alarmStr);
-  alarm->GoToSleepFor(howLong * 10);
+  alarm->GoToSleepFor(howLong * 10 + 1);
   //printf("%llu\n", stats->totalTicks);
 }
 
