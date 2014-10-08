@@ -83,7 +83,10 @@ class Lock {
     #ifdef CHANGED
     int key;
     static const int FREE = 1, BUSY = 0;
+    // this is a pointer to the thread that currently has access to the lock
+    // will use for boolean comparison
     Thread * threadWithLock;
+    // need a list of threads that we can access.
     List * queue;
     #endif
     // plus some other stuff you'll need to define
@@ -140,6 +143,7 @@ class Condition {
   private:
     const char* name;
     #ifdef CHANGED
+    // we need a list of threads that we can access within the condition variable
     List *queue;
     #endif
     // plus some other stuff you'll need to define
