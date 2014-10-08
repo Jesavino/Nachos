@@ -40,6 +40,8 @@ All programs below can be run with the random time slicing turned on.
    	./threads/nachos -P 2 [number of consumers] [number of producers] [size of buffer]
 	eg. 
 	./threads/nachos -P 2 4 5 10
+	where [number of consumers/producers] must be greater than 0,
+	and size of buffer must be greater than 1.
 	for 4 consumers, 5 producers and a buffer of size 10.	
 	Each producer puts the letters from the string "Hello World" into a shared buffer. 
 	Once a producer has put all the letters in the string into the buffer,
@@ -63,6 +65,15 @@ All programs below can be run with the random time slicing turned on.
 	Output is structured similarly to the example in the notes from CS415. 
 	You can easily see what each producer is putting into the shared buffer,
 	and what each consumer is taking from the shared buffer.
+	
+	The buffer size must be greater than 1 because our implementation compares
+	the indices of the producer and the consumer shared buffer location. If it is a size of 1,
+	then it is always the case that the current index in the producer is equal to the current
+	index of the consumer, and it leads to deadlock. 
+	This could be avoided by using a variable that keeps track of the amount
+	of items in the buffer. But on any system where you have memory constraints that would keep you from 
+	having a buffer bigger than 1, then you could not reasonably have an integer count of the 
+	amount of items in the buffer. So the buffer size must be at least two for our implementation.
 
 
 4. This program is implemented in the files alarm.cc and alarm.h
@@ -92,10 +103,11 @@ All programs below can be run with the random time slicing turned on.
 
 	The odd structure of the global linked list and the methods that operate on it
 	is the result of experimentation before bug fixing. 
-	The insert and remove methods could be removed from the Alarm class with relative 
-	ease. This program gave us a lot of trouble before it started working, 
+	This program gave us a lot of trouble before it started working, 
 	and when it did finally work, refactoring seemed daunting.
 	After all, if it ain't broke, don't fix it. 
+	One iteration of the code disabled interrupts directly, and it did not work any better or worse than 
+	what is implemented now.
 
 	The Nachos system is designed to quit if there is nothing runnable, 
 	which is one of the two big problems we had with this program. We toyed with the

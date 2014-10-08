@@ -32,6 +32,7 @@ int totalRun;
 
 // the maximum amount of time any alarm will sleep
 int MAXSLEEP = 5000;
+
 // A thread that yields in an infinite loop.
 // keeps Nachos alive
 Thread * keepAlive;
@@ -47,6 +48,7 @@ struct SCB {
 
 struct SCB * list;
 
+void insert(struct SCB * scb);
 
 // A simple Alarm class that puts the current thread to sleep for 
 // a specified amount of time. 
@@ -59,14 +61,7 @@ class Alarm{
   ~Alarm();
 
   // put thread to sleep for HowLong
-  void GoToSleepFor(int HowLong);
-
-  // insert method for linked list struct
-  void insert(struct SCB * scb);
-
-  // remove method for linked list struct
-  void remove();
-  
+  void GoToSleepFor(int HowLong);  
 
  private:
   // name for debugging

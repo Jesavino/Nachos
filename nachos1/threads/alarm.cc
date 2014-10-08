@@ -23,7 +23,6 @@ Alarm::~Alarm() {
 //----------------------------------------------------------------------
 // Alarm::GoToSleepFor(int howLong)
 //     puts the alarm to sleep for howLong ticks. 
-//     when it awakes, it determines if another thread needs to wake.
 //----------------------------------------------------------------------
 
 void Alarm::GoToSleepFor(int howLong) {
@@ -42,6 +41,7 @@ void Alarm::GoToSleepFor(int howLong) {
 
   // if this is not NULL it can generate a segfault later on
   mySCB->next = NULL;
+
   printf("*** in GoToSleepFor %12s: sleeping for %4d ticks at systime %6llu waketime: %6llu\n", 
 	 name, howLong, systime, mySCB->wakeTime);
 
@@ -54,19 +54,10 @@ void Alarm::GoToSleepFor(int howLong) {
   // and then wait on this alarms condition variable.
   mySCB->go->Wait(alarmMutex);
 
-  //the item at the head of the list should have awoken, which is now this alarm
-  // we have mutex, so this alarm can be removed from the list.
-  remove();
-
   // information for showing the status of the alarm.
   printf("*** woke up %12s at %6llu: Slept for %6llu ticks", name, systime, 
 	 systime - (mySCB->wakeTime - (long long unsigned) howLong));
   printf(" *** %3d threads have completed\n", ++totalRun);
-
-  // signal an alarm if it was supposed to wake at the same time
-  if (list != NULL && list->wakeTime <= systime) {
-    list->go->Signal(alarmMutex);
-  }
 
   // release the mutex after all list operations are done.
   alarmMutex->Release();
@@ -85,7 +76,7 @@ void Alarm::GoToSleepFor(int howLong) {
 //     emulates the List::SortedRemove() function 
 //----------------------------------------------------------------------
 
-void Alarm::insert(struct SCB * scb) {
+void insert(struct SCB * scb) {
   struct SCB * head = list;
 
   // if there is nothing on the list
@@ -118,21 +109,12 @@ void Alarm::insert(struct SCB * scb) {
 
 
 //----------------------------------------------------------------------
-// Alarm::remove()
-//     removes the first item from the list.
-//----------------------------------------------------------------------
-
-void Alarm::remove() {
-  list = list->next;
-}
-
-
-//----------------------------------------------------------------------
 // tick(int )
 //     a timer interrupt handler for a timer created to aid the alarm class
 //     its declaration is modeled after the original timer interrupt handler
 //     assigns the current running time to systime, then
-//     checks to see if any alarms need to wake up
+//     checks to see if any alarms need to wake up, waking all the ones that
+//     should awaken
 //----------------------------------------------------------------------
 
 void tick(int ) {
@@ -141,8 +123,9 @@ void tick(int ) {
 
   // if an item is supposed to wake up at this point in time, 
   // signal it.
-  if ( list != NULL && list->wakeTime <= systime) {
+  while ( list != NULL && list->wakeTime <= systime) {
     list->go->Signal(alarmMutex);
+    list = list->next;
   }
   
 }
@@ -201,7 +184,7 @@ void alarmTestStart(int numAlarms) {
   // assign the seed for the amount of time each alarm will sleep.
   // can be changed for different behavior
   seed = 1;
-  
+
   // used for statistic purposes
   totalRun = 0;
 
