@@ -2,25 +2,126 @@ Programming Assignment 1.
 
 Group Members: John Savino, Thom Matessich, John Cooper
 
-1. 
+All programs below can be run with the random time slicing turned on.
+
+1. Locks and Condition Variables.
+   	 Locks are a relatively straightforward implementation. 
+	 It was mentioned in class that they should mimic the Semaphores
+	 in structure, so that is what we did. The only difference is that 
+	 while the semaphores keep a private count, the locks private 'key'
+	 can only be free or busy. It is in essence a limited semaphore. 
+	 Each Lock keeps track of a list of threads that are waiting on it,
+	 and wakes the first one available in a FIFO order. 
+	 
+	 Lock keeps a pointer to the current thread in is Acquire method.
+	 isHeldByCurrentThread() returns true only if the pointers of the
+	 currentThread and threadWithLock are equal. If the memory addresses
+	 are the same, they must be the same thread, and are thus allowed to
+	 proceed. isHeldByCurrentThread() does not disable interrupts,
+	 unlike other methods in the concurrency control structures,
+	 but it is only accessed by objects with mutex, so it is fine.
+
+	 Condition Variables, like Locks and Semaphores keep track of a list
+	 of threads associated with a single condition variable. When a thread
+	 waits on a condition variable, the condition variable asserts that the 
+	 currentThread does have the mutex, otherwise it can't proceed. 
+	 It then releases the mutex and puts itself on the list of threads
+	 and goes to sleep.
+	 When it wakes, it Acquires the mutex (Lock) and proceeds.	 
+	 
+	 Signal() and Broadcast() are similar except that Signal() wakes only 
+	 one thread, and Broadcast() wakes them all.
+	 They remove the first thread in the queue and if it is not NULL, 
+	 or if it is actually a thread, it puts it on the ready list. Broadcast()
+	 does this for all threads in the queue. 
+
+2. This program is implemented in the files grouptest.cc and grouptest.h
+	This program should be run by invoking 
+   	./threads/nachos -P 2 [number of consumers] [number of producers] [size of buffer]
+	eg. 
+	./threads/nachos -P 2 4 5 10
+	for 4 consumers, 5 producers and a buffer of size 10.	
+	Each producer puts the letters from the string "Hello World" into a shared buffer. 
+	Once a producer has put all the letters in the string into the buffer,
+	that producer is done. 
+	Likewise, when a consumer reads the final character 'd', that consumer is done. 
+	This means that if there are an unequal number of producers and consumers, 
+	there will either be producers or consumers left waiting at the end.
+	We chose to go with this implementation because it finishes cleanly when there are 
+	equal numbers of each (as opposed to an implementation where the consumers run infinitely
+	and the producers only retrieve information from a finite buffer), 
+	and there didn't seem to be anything in the specification against it.
+	
+	They are implemented as a monitor with two conditions and lock, all global. 
+	When the consumers are attempting access to an empty buffer, they wait on empty.
+	When the producers are attempting access to a full buffer, they wait on full.
+	Each consumer rewrites the contents of the slot it just consumed to ensure that the same
+	data is not being used later on. The producer rewrites the same buffer later on, but it
+	does allow us to show that consumers aren't taking that data again before a producer 
+	can get to it.		
+
+	Output is structured similarly to the example in the notes from CS415. 
+	You can easily see what each producer is putting into the shared buffer,
+	and what each consumer is taking from the shared buffer.
 
 
+4. This program is implemented in the files alarm.cc and alarm.h
+   	It should be run by invoking ./threads/nachos -P 4 [number of alarms]
+	eg.
+	./threads/nachos -P 4 10 
+	for 10 alarms.
+	The Alarm class is relatively simple. There is a global linked list 
+	that each alarm can create its own node for. This linked list is a list	
+	of each alarm's wakeTime along with it's own condition variable. 
 
-2. If the number of producers is greater than the number of consumers...
-   If the number of consumers is greater than the number of producers...
+	A second Timer object is created (in the main function right before the 
+	alarm test is started) only in the case that the alarm test is run. 
+	It calls tick() as the timer interrupt handler. tick() only sets a 
+	global variable systime equal to stats->totalTicks (the system running time)
+	and then checks to see if there are any alarms that need to wake up by checking 
+	the wakeTime of the first element on the list, and if it can go, signals
+	its condition variable.
+	It runs in tandem with the original timerInterruptHandler().
+	Each alarm is a thread. Each one goes to sleep for a random
+	amount of time, which has a maximum time of 4999 ticks ( modulo 5000 ).
+	This can be changed in the code to whatever maximum is convenient.
+	Each alarm puts its information in a node in the linked list mentioned above,
+	and then goes to sleep on its own condition variable. When each alarm wakes, it
+	is still in GoToSleepFor(), it removes its information from the linked list, 
+	deletes its information, and checks to see if anything else needs to wake up. 
 
+	The odd structure of the global linked list and the methods that operate on it
+	is the result of experimentation before bug fixing. 
+	The insert and remove methods could be removed from the Alarm class with relative 
+	ease. This program gave us a lot of trouble before it started working, 
+	and when it did finally work, refactoring seemed daunting.
+	After all, if it ain't broke, don't fix it. 
 
+	The Nachos system is designed to quit if there is nothing runnable, 
+	which is one of the two big problems we had with this program. We toyed with the
+	idea of making a thread that does nothing but yield over and over, 
+	and wondered if it was too similar to busy waiting. Eventually, we found a piece of
+	advice on the following web page
+	http://www.cs.rochester.edu/~kshen/csc256-spring2005/assignments/nachos-programming3.html
+	that was to do precisely what we tried to avoid. The result leaves the alarm test
+	in an infinite loop when it ends, but it is a means to an end. 
 
+	The other problem was that the test was providing random segfaults long after 
+	the program should have been complete. It was caused by an oversight in pointer management
+	and is only noteable as being the longest lasting bug in the program. 
 
-4.
-
+	To verify correctness, the program outputs when each thread goes to sleep, for how long it should sleep
+	and when it should wake up. Upon waking it prints out the current time and for how long it slept.
+	It appears that threads generally oversleep, that is, they wake up at some point after they should have, 
+	sometimes significantly later. Debugging showed us, however, that they were being woken at the right time.
+	The discrepancy lies between being put on the ready list, and actually running. 
 
 
 5. This program should be run by invoking ./nachos -P 5 [numberOfUsers] 
 	Currently, the number of floors is set in the elevator_manager.h file. 
 	This can be changed by changing the static const int numberOfPeople 	
 	
-	Our implemtation runs by having each person declare what floor they 
+	Our implementation runs by having each person declare what floor they 
 	would like to get off on, and which floor they are currently on, for 
 	the user to see. These floors are generated randomly using a seed of 
 	10. The people declare when they enter the elevator, and when they 
