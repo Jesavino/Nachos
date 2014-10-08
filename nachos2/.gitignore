@@ -1,3 +1,5 @@
+*.coff
+bin/coff2noff
 *~
 test/halt
 test/matmult
