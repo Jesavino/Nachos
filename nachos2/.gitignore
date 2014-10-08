@@ -5,3 +5,7 @@ test/halt
 test/matmult
 test/shell
 test/sort
+test/fileio
+test/hellocons
+test/hellofile
+test/fromcons

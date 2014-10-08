@@ -66,7 +66,7 @@ matmult: matmult.o start.o
 	../bin/coff2noff matmult.coff matmult
 
 hellocons.o: hellocons.c
-	$(CC) $(CFLAGS) -c sort.c
+	$(CC) $(CFLAGS) -c hellocons.c
 hellocons: hellocons.o start.o
 	$(LD) $(LDFLAGS) start.o hellocons.o -o hellocons.coff
 	../bin/coff2noff hellocons.coff hellocons
