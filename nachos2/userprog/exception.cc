@@ -101,6 +101,30 @@ ExceptionHandler(ExceptionType which)
 	  case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
+
+#ifdef CHANGED
+	  case SC_Exit:
+
+ 	  case SC_Exec:
+
+	  case SC_Join:
+
+	  case SC_Create:
+
+	  case SC_Open:
+
+	  case SC_Read:
+
+	  case SC_Write:
+
+	  case SC_Close:
+
+	  case SC_Fork:
+
+	  case SC_Yield:
+
+#endif
+
           default:
 	    printf("Undefined SYSCALL %d\n", type);
 	    ASSERT(false);
