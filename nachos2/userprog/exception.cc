@@ -27,6 +27,25 @@
 
 #ifdef USE_TLB
 
+#ifdef CHANGED
+//----------------------------------------------------------------------
+// Space for Global Data as needed
+//
+//----------------------------------------------------------------------
+char * stringarg;
+int whence;
+
+// Increments the program counters
+void incrementPC() {
+
+	int pc = machine->ReadRegister(PCReg);
+	machine->WriteRegister(PrevPCReg, pc);
+	pc = machine->ReadRegister(NextPCReg);
+	machine->WriteRegister(PCReg, pc);
+	pc += 4;
+	machine->WriteRegister(NextPCReg, pc);
+}
+#endif
 //----------------------------------------------------------------------
 // HandleTLBFault
 //      Called on TLB fault. Note that this is not necessarily a page
@@ -94,14 +113,33 @@ void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
-
     switch (which) {
       case SyscallException:
 	switch (type) {
 	  case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
-          default:
+	  case SC_Create:
+		{
+			DEBUG('a', "Creating a new file.\n");
+			stringarg = new (std::nothrow) char[128];
+			whence = machine->ReadRegister(4);
+
+			fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+			for (int i = 0 ; i < 127 ; i++) 
+				if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+			stringarg[127] = '\0';
+
+			fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+
+			if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
+				fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
+
+			fprintf(stderr, "File Creation Successful. Returning\n");
+			incrementPC();
+			break;
+		}			
+      default:
 	    printf("Undefined SYSCALL %d\n", type);
 	    ASSERT(false);
 	}
