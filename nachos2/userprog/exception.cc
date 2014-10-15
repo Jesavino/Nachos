@@ -121,11 +121,16 @@ void writeFile() {
 
 	// Here we will add writing to the console specifically
 	// 	if (console == NULL) console = new(std::nothrow)
-	if ( file == 1 )
+	if ( file == ConsoleOutput )
 		fprintf(stderr, "%s", stringarg);
+	else if ( file == ConsoleInput )
+		fprintf(stderr, "Cannot Write to StdInput\n");
 	else {
-		fprintf(stderr, "Yet to be implemented\n");
-
+		if( !openFiles[file].used )
+			fprintf(stderr, "Requested file has not been opened!\n");
+		OpenFile *fileToWrite = openFiles[file].openFile;
+		int numWrite = fileToWrite->Write( stringarg, size);
+		machine->WriteRegister(2, numWrite);
 
 	}	
 }
@@ -148,7 +153,7 @@ void readFile() {
 	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 
 	if(!openFiles[file].used)
-		fprintf(stderr, "Requested file has not beed opened!\n");
+		fprintf(stderr, "Requested file for read has not been opened!\n");
 	OpenFile *fileToRead = openFiles[file].openFile;
 
 	int numRead = fileToRead->Read( buffer , numBytes );
