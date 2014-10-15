@@ -22,7 +22,6 @@ main()
     OpenFileId input, output;
     char c;
     int numbytes, retval;
-
     Create("fileio.out");
     prints("Past the Create()\n", ConsoleOutput);
     output = Open("fileio.out");
