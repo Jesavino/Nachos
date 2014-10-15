@@ -25,7 +25,9 @@
 #include "system.h"
 #include "syscall.h"
 #include "console.h"
-
+#ifdef CHANGED
+#include "../threads/thread.h"
+#endif
 #ifdef USE_TLB
 
 #ifdef CHANGED
@@ -189,6 +191,20 @@ void closeFile() {
 	}
 
 }
+
+void forkProgram() {
+  printf("in fork\n");
+  VoidFunctionPtr func = (VoidFunctionPtr)machine->ReadRegister(4);
+  Thread * t = new(std::nothrow) Thread("userprog");
+  t->Fork(func, 0);
+
+
+}
+
+void yieldProgram() {
+  printf("in yield\n");
+  currentThread->Yield();
+}
 #endif
 //----------------------------------------------------------------------
 // HandleTLBFault
@@ -302,6 +318,16 @@ ExceptionHandler(ExceptionType which)
 	      incrementPC();
 	      break;
 	    }
+	  case SC_Fork:
+	    forkProgram();
+	    incrementPC();
+	    break;
+
+	  case SC_Yield:
+	    printf("HEre\n");
+	    yieldProgram();
+	    incrementPC();
+	    break;
 #endif
       default:
 	    printf("Undefined SYSCALL %d\n", type);
