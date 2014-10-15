@@ -24,6 +24,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
+#include "console.h"
 
 #ifdef USE_TLB
 
@@ -32,8 +33,15 @@
 // Space for Global Data as needed
 //
 //----------------------------------------------------------------------
+struct openFileDesc {
+	OpenFile *openFile = NULL;
+	int used;
+	char * name;
+}openFiles[10] ;
+
 char * stringarg;
 int whence;
+Console *console;
 
 // Increments the program counters
 void incrementPC() {
@@ -44,6 +52,142 @@ void incrementPC() {
 	machine->WriteRegister(PCReg, pc);
 	pc += 4;
 	machine->WriteRegister(NextPCReg, pc);
+}
+// create a new file
+void createNewFile() {
+
+	DEBUG('a', "Creating a new file.\n");
+	stringarg = new (std::nothrow) char[128];
+	whence = machine->ReadRegister(4);
+
+	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	for (int i = 0 ; i < 127 ; i++) 
+		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	stringarg[127] = '\0';
+
+	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
+		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
+
+	fprintf(stderr, "File Creation Successful. Returning\n");
+}
+// open a file
+void openFile() {
+	DEBUG('a', "Opening file.\n");
+	stringarg = new(std::nothrow) char[128];
+	whence = machine->ReadRegister(4);
+
+	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	for (int i = 0 ; i < 127 ; i++)
+		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	stringarg[127] = '\0';
+
+	fprintf(stderr, "Attempting to open filename %s\n", stringarg);
+	OpenFile *file = fileSystem->Open(stringarg);
+	if (file == NULL)
+		fprintf(stderr, "Error during file opening\n");
+	else 
+		fprintf(stderr, "File Opened Successfully. Returning\n");
+
+	// We need to place the file in a Kernel accessable space?
+	// so we find the space to put the file. 
+	int fileId = -1;
+	for ( int i = 2 ; i < 10 ; i++) {
+		if (! openFiles[i].used ) {
+			openFiles[i].used = 1;
+			openFiles[i].name = stringarg;
+			openFiles[i].openFile = file;
+			fileId = i;
+			break;
+		}
+	}
+	if (fileId == -1)
+		fprintf(stderr, "Too many files open\n");
+	else
+		machine->WriteRegister(2, fileId);
+
+}
+// write to the specified file
+void writeFile() {
+	DEBUG('a', "Writing to a file\n");
+	
+	int size = machine->ReadRegister(5);
+	whence = machine->ReadRegister(4);
+
+	stringarg = new(std::nothrow) char[size];
+	for (int i = 0 ; i < size ; i++)
+		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
+ 
+	int file = machine->ReadRegister(6);
+
+	// Here we will add writing to the console specifically
+	// 	if (console == NULL) console = new(std::nothrow)
+	if ( file == ConsoleOutput )
+		fprintf(stderr, "%s", stringarg);
+	else if ( file == ConsoleInput )
+		fprintf(stderr, "Cannot Write to StdInput\n");
+	else {
+		if( !openFiles[file].used )
+			fprintf(stderr, "Requested file has not been opened!\n");
+		OpenFile *fileToWrite = openFiles[file].openFile;
+		int numWrite = fileToWrite->Write( stringarg, size);
+		machine->WriteRegister(2, numWrite);
+
+	}	
+}
+// read from the specified file
+void readFile() {
+	DEBUG('a' , "Reading from File\n");
+	
+	int file = machine->ReadRegister(6);
+	if (file < 0 || file > 9) {
+		fprintf(stderr, "Invalid file read attempt\n");
+	}
+	int numBytes = machine->ReadRegister(5);
+	// in this case, whence is mainMemory address of buffer to read into
+	whence =  machine->ReadRegister(4);	
+	/*
+	stringarg = new(std::nothrow) char[numBytes];
+	for (int i = 0; i < numBytes ; i++)
+		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	*/
+	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
+
+	if(!openFiles[file].used){
+		// error reading from closed or non-existing file
+		machine->WriteRegister(2, -1);
+	}
+	else {
+		OpenFile *fileToRead = openFiles[file].openFile;
+
+		int numRead = fileToRead->Read( buffer , numBytes );
+
+		//int len = strlen(buffer);
+		strcpy(&machine->mainMemory[whence] , buffer);
+		machine->WriteRegister(2 , numRead);
+	}
+}
+// close the file
+void closeFile() {
+	DEBUG('a', "Closing the file\n");
+
+	int file = machine->ReadRegister(4);
+
+	if (file == ConsoleInput)
+		fprintf(stderr, "Cannot close Console Input\n");
+	else if (file == ConsoleOutput)
+		fprintf(stderr, "Cannot close Console Output\n");
+	else {
+		if (!openFiles[file].used)
+			fprintf(stderr, "File not open to be closed!\n");
+
+		openFiles[file].used = 0;
+		openFiles[file].name = NULL;
+		openFiles[file].openFile = NULL;
+
+	}
+
 }
 #endif
 //----------------------------------------------------------------------
@@ -119,30 +263,45 @@ ExceptionHandler(ExceptionType which)
 	  case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
-<<<<<<< HEAD
 
 #ifdef CHANGED
 
 	  case SC_Create:
-		{
-			DEBUG('a', "Creating a new file.\n");
-			stringarg = new (std::nothrow) char[128];
-			whence = machine->ReadRegister(4);
-
-			fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-			for (int i = 0 ; i < 127 ; i++) 
-				if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-			stringarg[127] = '\0';
-
-			fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
-
-			if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
-				fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
-
-			fprintf(stderr, "File Creation Successful. Returning\n");
-			incrementPC();
-			break;
-		}			
+	    {
+	      createNewFile();
+	      incrementPC();
+	      break;
+	    }			
+	  case SC_Open:
+	    {	
+	      if (openFiles == NULL) {
+		for (int j = 2 ; j < 10 ; j++) { 
+		  //openFiles[j].openFile = new(std::nothrow) OpenFile(j);
+		  openFiles[j].used = 0;
+		}
+	      }
+	      openFile();
+	      incrementPC();
+	      break;
+	    }		
+	  case SC_Write:
+	    {
+	      writeFile();
+	      incrementPC();
+	      break;
+	    }
+	  case SC_Read:
+	    {
+	      readFile();
+	      incrementPC();
+	      break;
+	    }
+	  case SC_Close:
+	    {
+	      closeFile();
+	      incrementPC();
+	      break;
+	    }
 #endif
       default:
 	    printf("Undefined SYSCALL %d\n", type);
@@ -156,4 +315,3 @@ ExceptionHandler(ExceptionType which)
       default: ;
     }
 }
-
