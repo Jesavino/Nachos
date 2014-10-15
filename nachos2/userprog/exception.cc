@@ -27,6 +27,25 @@
 
 #ifdef USE_TLB
 
+#ifdef CHANGED
+//----------------------------------------------------------------------
+// Space for Global Data as needed
+//
+//----------------------------------------------------------------------
+char * stringarg;
+int whence;
+
+// Increments the program counters
+void incrementPC() {
+
+	int pc = machine->ReadRegister(PCReg);
+	machine->WriteRegister(PrevPCReg, pc);
+	pc = machine->ReadRegister(NextPCReg);
+	machine->WriteRegister(PCReg, pc);
+	pc += 4;
+	machine->WriteRegister(NextPCReg, pc);
+}
+#endif
 //----------------------------------------------------------------------
 // HandleTLBFault
 //      Called on TLB fault. Note that this is not necessarily a page
@@ -94,38 +113,38 @@ void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
-
     switch (which) {
       case SyscallException:
 	switch (type) {
 	  case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
+<<<<<<< HEAD
 
 #ifdef CHANGED
-	  case SC_Exit:
-
- 	  case SC_Exec:
-
-	  case SC_Join:
 
 	  case SC_Create:
+		{
+			DEBUG('a', "Creating a new file.\n");
+			stringarg = new (std::nothrow) char[128];
+			whence = machine->ReadRegister(4);
 
-	  case SC_Open:
+			fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+			for (int i = 0 ; i < 127 ; i++) 
+				if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+			stringarg[127] = '\0';
 
-	  case SC_Read:
+			fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 
-	  case SC_Write:
+			if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
+				fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
-	  case SC_Close:
-
-	  case SC_Fork:
-
-	  case SC_Yield:
-
+			fprintf(stderr, "File Creation Successful. Returning\n");
+			incrementPC();
+			break;
+		}			
 #endif
-
-          default:
+      default:
 	    printf("Undefined SYSCALL %d\n", type);
 	    ASSERT(false);
 	}
