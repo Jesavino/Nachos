@@ -11,6 +11,7 @@ perAlarm()
 int 
 main() 
 {  
+    
   char *s = "Hello, console.\n";
   
   prints(s, ConsoleOutput);
@@ -20,7 +21,8 @@ main()
   Fork(perAlarm);
   Fork(perAlarm);
   Fork(perAlarm);
-
+  s = "Goodbye testfy\n";
+  prints(s, ConsoleOutput);
   Halt();  
 }
 

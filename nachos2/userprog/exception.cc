@@ -324,9 +324,8 @@ ExceptionHandler(ExceptionType which)
 	    break;
 
 	  case SC_Yield:
-	    printf("HEre\n");
-	    yieldProgram();
 	    incrementPC();
+	    yieldProgram();
 	    break;
 #endif
       default:

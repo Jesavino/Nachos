@@ -9,3 +9,4 @@ test/fileio
 test/hellocons
 test/hellofile
 test/fromcons
+test/testfy
