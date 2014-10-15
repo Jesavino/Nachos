@@ -36,6 +36,7 @@
 struct openFileDesc {
 	OpenFile *openFile = NULL;
 	int used;
+	char * name;
 }openFiles[10] ;
 
 char * stringarg;
@@ -94,6 +95,7 @@ void openFile() {
 	for ( int i = 2 ; i < 10 ; i++) {
 		if (! openFiles[i].used ) {
 			openFiles[i].used = 1;
+			openFiles[i].name = stringarg;
 			openFiles[i].openFile = file;
 			fileId = i;
 			break;
@@ -152,15 +154,39 @@ void readFile() {
 	*/
 	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 
-	if(!openFiles[file].used)
-		fprintf(stderr, "Requested file for read has not been opened!\n");
-	OpenFile *fileToRead = openFiles[file].openFile;
+	if(!openFiles[file].used){
+		// error reading from closed or non-existing file
+		machine->WriteRegister(2, -1);
+	}
+	else {
+		OpenFile *fileToRead = openFiles[file].openFile;
 
-	int numRead = fileToRead->Read( buffer , numBytes );
+		int numRead = fileToRead->Read( buffer , numBytes );
 
-	//int len = strlen(buffer);
-	strcpy(&machine->mainMemory[whence] , buffer);
-	machine->WriteRegister(2 , numRead);
+		//int len = strlen(buffer);
+		strcpy(&machine->mainMemory[whence] , buffer);
+		machine->WriteRegister(2 , numRead);
+	}
+}
+// close the file
+void closeFile() {
+	DEBUG('a', "Closing the file\n");
+
+	int file = machine->ReadRegister(4);
+
+	if (file == ConsoleInput)
+		fprintf(stderr, "Cannot close Console Input\n");
+	else if (file == ConsoleOutput)
+		fprintf(stderr, "Cannot close Console Output\n");
+	else {
+		if (!openFiles[file].used)
+			fprintf(stderr, "File not open to be closed!\n");
+
+		openFiles[file].used = 0;
+		openFiles[file].name = NULL;
+		openFiles[file].openFile = NULL;
+
+	}
 
 }
 #endif
@@ -264,6 +290,12 @@ ExceptionHandler(ExceptionType which)
 	  case SC_Read:
 		{
 			readFile();
+			incrementPC();
+			break;
+		}
+	  case SC_Close:
+		{
+			closeFile();
 			incrementPC();
 			break;
 		}
