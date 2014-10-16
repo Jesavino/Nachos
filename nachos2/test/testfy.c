@@ -1,30 +1,32 @@
 #include "syscall.h"
 
-void 
-perAlarm()
+void
+SimpleThread(i)
+     int i;
 {
-  char * s = "forked\n";
-  prints(s, ConsoleOutput);
-  Yield();
+    int num;
+    prints("one\n", 1);
+    Yield();
+    prints("two\n", 1);
+    Yield();
+    prints("three\n", 1);
+    Yield();
+    prints("four\n", 1);
+    Yield();
+    prints("five\n", 1);
+    Yield();
+
 }
 
-int 
-main() 
-{  
-    
-  char *s = "Hello, console.\n";
-  
-  prints(s, ConsoleOutput);
-  
-  Fork(perAlarm);
-  Fork(perAlarm);
-  Fork(perAlarm);
-  Fork(perAlarm);
-  Fork(perAlarm);
-  s = "Goodbye testfy\n";
-  prints(s, ConsoleOutput);
-  Halt();  
+
+void
+main()
+{
+  prints("start ping-pong\n", 1);
+  Fork(SimpleThread);
+  SimpleThread();
 }
+
 
 
 
