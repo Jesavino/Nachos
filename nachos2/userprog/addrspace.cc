@@ -193,3 +193,11 @@ void AddrSpace::RestoreState()
     machine->pageTableSize = numPages;
 #endif
 }
+
+
+#ifdef CHANGED
+AddrSpace AddrSpace::Fork()
+{
+
+}
+#endif
