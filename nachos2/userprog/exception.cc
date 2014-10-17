@@ -196,6 +196,14 @@ void forkProgram() {
   printf("in fork\n");
   VoidFunctionPtr func;
   func = (VoidFunctionPtr)machine->ReadRegister(4);
+
+  /*  int pc = machine->ReadRegister(PCReg);
+  machine->WriteRegister(PrevPCReg, pc);
+  pc = machine->ReadRegister(4);
+  machine->WriteRegister(PCReg, pc);
+  pc += 4;
+  machine->WriteRegister(NextPCReg, pc);
+  */
   Thread * t = new(std::nothrow) Thread("userprog");
   t->Fork(func, 0);
 }
