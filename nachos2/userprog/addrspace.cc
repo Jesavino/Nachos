@@ -196,8 +196,9 @@ void AddrSpace::RestoreState()
 
 
 #ifdef CHANGED
-AddrSpace AddrSpace::Fork()
+/*AddrSpace AddrSpace::Fork()
 {
 
 }
+*/
 #endif

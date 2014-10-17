@@ -6,7 +6,7 @@
 
 class SynchConsole{
  public:
-  SynchConsole(int in, int out);
+  SynchConsole(char * in, char * out);
   
   ~SynchConsole();
   
