@@ -10,6 +10,10 @@ class SynchConsole{
   
   ~SynchConsole();
   
+  void ReadAvail();
+
+  void WriteDone();
+
   void SynchPutChar(char ch);
   
   char SynchGetChar();

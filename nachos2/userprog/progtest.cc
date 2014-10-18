@@ -14,7 +14,9 @@
 #include "addrspace.h"
 #include "synch.h"
 #include <new>
-
+#ifdef CHANGED
+#include "synchconsole.h"
+#endif
 //----------------------------------------------------------------------
 // StartProcess
 // 	Run a user program.  Open the executable, load it into
@@ -47,7 +49,8 @@ StartProcess(char *filename)
 
 // Data structures needed for the console test.  Threads making
 // I/O requests wait on a Semaphore to delay until the I/O completes.
-
+#ifdef CHANGED
+/*
 static Console *console;
 static Semaphore *readAvail;
 static Semaphore *writeDone;
@@ -83,3 +86,19 @@ ConsoleTest (char *in, char *out)
 	if (ch == 'q') return;  // if q, quit
     }
 }
+*/
+
+static SynchConsole * console;
+
+void ConsoleTest(char * in, char * out) {
+  char ch;
+  console = new(std::nothrow) SynchConsole(in, out);
+  while (1) {
+    ch = console->SynchGetChar();
+    console->SynchPutChar(ch);
+    if (ch == 'q') return;
+
+  }
+}
+
+#endif
