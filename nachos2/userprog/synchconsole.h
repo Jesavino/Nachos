@@ -13,6 +13,8 @@ class SynchConsole{
   void ReadAvail();
 
   void WriteDone();
+  
+  void WriteLine(char * line);
 
   void SynchPutChar(char ch);
   
@@ -23,7 +25,9 @@ class SynchConsole{
   Console * console;
   Semaphore *readAvail;
   Semaphore *writeDone;
-
+  Lock * mutex;
+  void PrivatePutChar(char ch);
+  char PrivateGetChar();
 };
 
 

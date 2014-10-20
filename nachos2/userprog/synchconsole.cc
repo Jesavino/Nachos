@@ -22,6 +22,7 @@ SynchConsole::SynchConsole(char * in, char * out){
   console = new(std::nothrow) Console(in, out, readAvailFunc, writeDoneFunc, (int) this);
   readAvail = new(std::nothrow) Semaphore("read available", 0);
   writeDone = new(std::nothrow) Semaphore("write done", 0);
+  mutex = new(std::nothrow) Lock("synchconsole mutex");
 }
 
 //----------------------------------------------------------------------
@@ -31,6 +32,7 @@ SynchConsole::~SynchConsole() {
   delete console;
   delete readAvail;
   delete writeDone;
+  delete mutex;
 
 }
 
@@ -49,12 +51,26 @@ void SynchConsole::WriteDone() {
 }
 
 //----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+void SynchConsole::WriteLine(char * line) {
+  mutex->Acquire();
+  int i = 0;
+  while (line[i] != '\0') {
+    PrivatePutChar(line[i]);
+    i++;
+  }
+  mutex->Release();
+}
+
+//----------------------------------------------------------------------
 // write char to display
 //----------------------------------------------------------------------
 
 void SynchConsole::SynchPutChar(char ch) {
-  console->PutChar(ch);	// echo it!
-  writeDone->P();
+  mutex->Acquire();
+  PrivatePutChar(ch);
+  mutex->Release();
 }
 
 //----------------------------------------------------------------------
@@ -62,13 +78,30 @@ void SynchConsole::SynchPutChar(char ch) {
 //----------------------------------------------------------------------
 
 char SynchConsole::SynchGetChar() {
-  readAvail->P();		// wait for character to arrive
-  
-  char ch = console->GetChar();
+  mutex->Acquire();
+
+  char ch = PrivateGetChar();
+
+  mutex->Release();
   return ch;
 }
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
+void SynchConsole::PrivatePutChar(char ch) {
+  console->PutChar(ch);
+  writeDone->P();
+}
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+char SynchConsole::PrivateGetChar() {
+
+  readAvail->P();		// wait for character to arrive
+  char ch = console->GetChar();
+  return ch;
+}
 
 #endif // CHANGED
