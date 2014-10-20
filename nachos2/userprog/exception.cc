@@ -24,7 +24,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "syscall.h"
-#include "console.h"
+#include "synchconsole.h"
 #ifdef CHANGED
 #include "../threads/thread.h"
 #endif
@@ -43,7 +43,7 @@ struct openFileDesc {
 
 char * stringarg;
 int whence;
-Console *console;
+SynchConsole *synchConsole;
 
 // Increments the program counters
 void incrementPC() {
@@ -125,8 +125,11 @@ void writeFile() {
 
 	// Here we will add writing to the console specifically
 	// 	if (console == NULL) console = new(std::nothrow)
-	if ( file == ConsoleOutput )
-		fprintf(stderr, "%s", stringarg);
+	if ( file == ConsoleOutput ) {
+		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
+		synchConsole->WriteLine(stringarg);
+		
+	}
 	else if ( file == ConsoleInput )
 		fprintf(stderr, "Cannot Write to StdInput\n");
 	else {
@@ -155,8 +158,17 @@ void readFile() {
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	*/
 	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
-
-	if(!openFiles[file].used){
+	if (file == ConsoleInput) {
+		char * readChar = new(std::nothrow) char[128];
+		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
+		for( int i = 0 ; i < numBytes ; i++) {
+			readChar[i] = synchConsole->SynchGetChar();
+		}
+		readChar[127] = '\0';
+		strcpy(&machine->mainMemory[whence] , readChar);
+		machine->WriteRegister(2, numBytes);
+	}
+	else if(!openFiles[file].used){
 		// error reading from closed or non-existing file
 		machine->WriteRegister(2, -1);
 	}
