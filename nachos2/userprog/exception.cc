@@ -25,7 +25,9 @@
 #include "system.h"
 #include "syscall.h"
 #include "console.h"
-
+#ifdef CHANGED
+#include "../threads/thread.h"
+#endif
 #ifdef USE_TLB
 
 #ifdef CHANGED
@@ -192,7 +194,30 @@ void closeFile() {
 	}
 
 }
+
+void forkProgram() {
+  printf("in fork\n");
+  VoidFunctionPtr func;
+  func = (VoidFunctionPtr)machine->ReadRegister(4);
+
+  /*  int pc = machine->ReadRegister(PCReg);
+  machine->WriteRegister(PrevPCReg, pc);
+  pc = machine->ReadRegister(4);
+  machine->WriteRegister(PCReg, pc);
+  pc += 4;
+  machine->WriteRegister(NextPCReg, pc);
+  */
+  Thread * t = new(std::nothrow) Thread("userprog");
+  t->Fork(func, 0);
+}
+
+void yieldProgram() {
+  printf("in yield\n");
+  currentThread->Yield();
+}
+
 #endif
+
 //----------------------------------------------------------------------
 // HandleTLBFault
 //      Called on TLB fault. Note that this is not necessarily a page
@@ -266,42 +291,59 @@ ExceptionHandler(ExceptionType which)
 	  case SC_Halt:
             DEBUG('a', "Shutdown, initiated by user program.\n");
             interrupt->Halt();
+
+#ifdef CHANGED
+
 	  case SC_Create:
-		{
-			createNewFile();
-			incrementPC();
-			break;
-		}	
+	    {
+	      createNewFile();
+	      incrementPC();
+	      break;
+	    }			
 	  case SC_Open:
-		{	
-			if (openFiles == NULL) {
-				for (int j = 2 ; j < 10 ; j++) { 
-					//openFiles[j].openFile = new(std::nothrow) OpenFile(j);
-					openFiles[j].used = 0;
-				}
-			}
-			openFile();
-			incrementPC();
-			break;
-		}		
+	    {	
+	      if (openFiles == NULL) {
+		for (int j = 2 ; j < 10 ; j++) { 
+		  //openFiles[j].openFile = new(std::nothrow) OpenFile(j);
+		  openFiles[j].used = 0;
+		}
+	      }
+	      openFile();
+	      incrementPC();
+	      break;
+	    }		
 	  case SC_Write:
-		{
-			writeFile();
-			incrementPC();
-			break;
-		}
+	    {
+	      writeFile();
+	      incrementPC();
+	      break;
+	    }
 	  case SC_Read:
-		{
-			readFile();
-			incrementPC();
-			break;
-		}
+	    {
+	      readFile();
+	      incrementPC();
+	      break;
+	    }
 	  case SC_Close:
-		{
-			closeFile();
-			incrementPC();
-			break;
-		}
+	    {
+	      closeFile();
+	      incrementPC();
+	      break;
+	    }
+
+	  case SC_Fork:
+
+	    forkProgram();
+	    incrementPC();
+	    break;
+
+	  case SC_Yield:
+
+	    incrementPC();
+	    yieldProgram();
+	    break;
+
+#endif
       default:
 	    printf("Undefined SYSCALL %d\n", type);
 	    ASSERT(false);
