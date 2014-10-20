@@ -35,11 +35,14 @@
 // Space for Global Data as needed
 //
 //----------------------------------------------------------------------
+static const int numOpenFiles = 20;
+
 struct openFileDesc {
 	OpenFile *openFile = NULL;
 	int used;
+	int refCount;
 	char * name;
-}openFiles[10] ;
+}openFiles[numOpenFiles];
 
 char * stringarg;
 int whence;
@@ -94,9 +97,10 @@ void openFile() {
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
 	int fileId = -1;
-	for ( int i = 2 ; i < 10 ; i++) {
+	for ( int i = 2 ; i < numOpenFiles ; i++) {
 		if (! openFiles[i].used ) {
 			openFiles[i].used = 1;
+			openFiles[i].refCount++;
 			openFiles[i].name = stringarg;
 			openFiles[i].openFile = file;
 			fileId = i;
@@ -152,11 +156,7 @@ void readFile() {
 	int numBytes = machine->ReadRegister(5);
 	// in this case, whence is mainMemory address of buffer to read into
 	whence =  machine->ReadRegister(4);	
-	/*
-	stringarg = new(std::nothrow) char[numBytes];
-	for (int i = 0; i < numBytes ; i++)
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	*/
+
 	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 	if (file == ConsoleInput) {
 		char * readChar = new(std::nothrow) char[128];
@@ -195,11 +195,14 @@ void closeFile() {
 	else {
 		if (!openFiles[file].used)
 			fprintf(stderr, "File not open to be closed!\n");
-
-		openFiles[file].used = 0;
-		openFiles[file].name = NULL;
-		openFiles[file].openFile = NULL;
-
+		
+		// only delete the file from the list of open files if you are the last one using it
+		openFiles[file].refCount--;
+		if ( (openFiles[file].refCount) == 0 ) {
+			openFiles[file].used = 0;
+			openFiles[file].name = NULL;
+			openFiles[file].openFile = NULL;
+		}
 	}
 
 }
