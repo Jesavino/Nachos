@@ -35,6 +35,9 @@
 // Space for Global Data as needed
 //
 //----------------------------------------------------------------------
+
+SpaceId procId = 0;
+
 static const int numOpenFiles = 20;
 
 struct openFileDesc {
@@ -228,6 +231,43 @@ void yieldProgram() {
   currentThread->Yield();
 }
 
+void execThread(int arg) {
+  
+  currentThread->space->InitRegisters();		// set the initial register values
+  currentThread->space->RestoreState();		// load page table register
+  
+  machine->Run();			// jump to the user progam
+  ASSERT(false);			// machine->Run never returns;
+                                        // the address space exits
+                                        // by doing the syscall "exit"
+
+}
+
+void execFile() {
+  char * filename = new(std::nothrow) char[128];
+  whence = machine->ReadRegister(4);
+  
+  fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+  for (int i = 0 ; i < 127 ; i++)
+    if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
+  filename[127] = '\0';
+  
+  fprintf(stderr, "Attempting to open filename %s\n", filename);
+  OpenFile *executable = fileSystem->Open(filename);
+  AddrSpace *space;
+  
+  if (executable == NULL) {
+    printf("Unable to open file %s\n", filename);
+    machine->WriteRegister(2, -1);
+    return;
+  }
+  space = new(std::nothrow) AddrSpace(executable);    
+  Thread * t = new(std::nothrow) Thread("execed thread");
+  t->space = space;
+  t->Fork(execThread, 0);
+  delete executable;			// close file
+
+}  
 #endif
 
 //----------------------------------------------------------------------
@@ -344,10 +384,14 @@ ExceptionHandler(ExceptionType which)
 	    }
 
 	  case SC_Exit:
-
+	    interrupt->Halt();
+	
 	  case SC_Exec:
-
+	    execFile();
+	    incrementPC();
+	    break;
 	  case SC_Join:
+	    interrupt->Halt();
 	    /*	  case SC_Fork:
 
 	    forkProgram();
