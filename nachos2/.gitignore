@@ -10,3 +10,5 @@ test/hellocons
 test/hellofile
 test/fromcons
 test/testfy
+*.tgz
+test/testexec
