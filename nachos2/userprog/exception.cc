@@ -65,16 +65,16 @@ void createNewFile() {
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 
-	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
 	for (int i = 0 ; i < 127 ; i++) 
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	stringarg[127] = '\0';
 
-	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+	//fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
 		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
-	fprintf(stderr, "File Creation Successful. Returning\n");
+	//fprintf(stderr, "File Creation Successful. Returning\n");
 }
 // open a file
 void openFile() {
@@ -82,17 +82,17 @@ void openFile() {
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 
-	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
 	for (int i = 0 ; i < 127 ; i++)
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	stringarg[127] = '\0';
 
-	fprintf(stderr, "Attempting to open filename %s\n", stringarg);
+	//fprintf(stderr, "Attempting to open filename %s\n", stringarg);
 	OpenFile *file = fileSystem->Open(stringarg);
 	if (file == NULL)
 		fprintf(stderr, "Error during file opening\n");
-	else 
-		fprintf(stderr, "File Opened Successfully. Returning\n");
+	//else 
+	//	fprintf(stderr, "File Opened Successfully. Returning\n");
 
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
