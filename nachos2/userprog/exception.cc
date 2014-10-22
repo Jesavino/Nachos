@@ -261,13 +261,26 @@ void execFile() {
     machine->WriteRegister(2, -1);
     return;
   }
+
   space = new(std::nothrow) AddrSpace(executable);    
-  Thread * t = new(std::nothrow) Thread("execed thread");
-  t->space = space;
-  t->Fork(execThread, 0);
+  Thread * thread = new(std::nothrow) Thread("execed thread");
+  thread->space = space;
+
+  // calling thread given this threads pid.
+  // put it in thread?
+  machine->WriteRegister(4, procId++);
+  
+  thread->Fork(execThread, 0);
   delete executable;			// close file
+  
 
 }  
+
+void exit() {
+  currentThread->Finish();
+  //what to do with error code.
+}
+
 #endif
 
 //----------------------------------------------------------------------
@@ -384,6 +397,7 @@ ExceptionHandler(ExceptionType which)
 	    }
 
 	  case SC_Exit:
+	    exit();
 	    interrupt->Halt();
 	
 	  case SC_Exec:
