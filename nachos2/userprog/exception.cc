@@ -343,7 +343,12 @@ ExceptionHandler(ExceptionType which)
 	      break;
 	    }
 
-	  case SC_Fork:
+	  case SC_Exit:
+
+	  case SC_Exec:
+
+	  case SC_Join:
+	    /*	  case SC_Fork:
 
 	    forkProgram();
 	    incrementPC();
@@ -354,7 +359,7 @@ ExceptionHandler(ExceptionType which)
 	    incrementPC();
 	    yieldProgram();
 	    break;
-
+	    */
 #endif
       default:
 	    printf("Undefined SYSCALL %d\n", type);
