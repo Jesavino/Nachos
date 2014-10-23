@@ -36,9 +36,9 @@
 //
 //----------------------------------------------------------------------
 
-SpaceId procId = 0;
-
 static const int numOpenFiles = 20;
+
+int pid = 1;
 
 struct openFileDesc {
 	OpenFile *openFile = NULL;
@@ -266,9 +266,12 @@ void execFile() {
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = space;
 
+  
   // calling thread given this threads pid.
   // put it in thread?
-  machine->WriteRegister(4, procId++);
+  thread->pid = pid++;
+  printf("%d\n", thread->pid);
+  machine->WriteRegister(4, thread->pid);
   
   thread->Fork(execThread, 0);
   delete executable;			// close file
