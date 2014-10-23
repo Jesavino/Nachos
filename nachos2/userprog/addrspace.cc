@@ -86,6 +86,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
+#ifdef CHANGED
+
+#endif
+
 #ifndef USE_TLB
 // first, set up the translation 
     pageTable = new(std::nothrow) TranslationEntry[numPages];
