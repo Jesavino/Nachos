@@ -15,6 +15,7 @@
 
 #include "copyright.h"
 #include "filesys.h"
+#include "bitmap.h"
 
 #define UserStackSize		1024 	// increase this as necessary!
 
@@ -31,6 +32,7 @@ class AddrSpace {
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch 
 
+	BitMap *bitmap;
 #ifdef CHANGED
     AddrSpace Fork();
 #endif

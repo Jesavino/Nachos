@@ -88,6 +88,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifndef USE_TLB
 // first, set up the translation 
+	bitmap = new(std::nothrow) BitMap(NumPhysPages);
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     for (i = 0; i < numPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #

@@ -4,8 +4,10 @@
 
 
 MemoryManager::MemoryManager(Machine *sysMachine ) {
-	machine = sysMachine;
 
+	machine = sysMachine;
+	for (int i = 0 ; i < NumPhysPages ; i++)
+		physPageInfo[i] = 0;
 
 }
 
@@ -80,6 +82,8 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 	unsigned int vpn, offset;
 	TranslationEntry *entry;
 	unsigned int pageFrame;
+	AddrSpace *addrSpace;
+	BitMap *bitmap;
 
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
 
@@ -91,7 +95,8 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 	// calculate the vpn and offset within the page from VA
 	vpn = (unsigned) virtAddr / PageSize;
 	offset = (unsigned) virtAddr % PageSize;
-
+	
+	/* THIS IS ALL CRAP FROM THE OLD TRANSLATE
 	if( machine->tlb == NULL)
 		fprintf(stderr, "Error, TLB is NULL!\n");
 	else {
@@ -101,8 +106,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 				break;
 			}
 		if (entry == NULL) {
-			DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-			return -1;
+			// THIS IS WHAT WE NEED TO IMPLEMENT. YAY.
 		}	
 	}
 	
@@ -110,7 +114,25 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 		DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
 		return -1;
 	}	
-	pageFrame = entry->physicalPage;
+	*/
+	
+	// Get the address space from the current thread
+	addrSpace = currentThread->space;
+	bitmap = addrSpace->bitmap;
+
+	// we have the VPN, should line up with ith physical page it has
+	unsigned int count = 0;
+	for ( i = 0; i < NumPhysPages; i++) {
+		if (bitmap->Test(i)) {
+			count++;
+			if ( count == vpn ) {
+				pageFrame = i;
+				break;
+			}
+		}
+	}
+
+	// pageFrame = entry->physicalPage;
 
 	// if the pageFrame is too big, there is a problem. Something wrong 
 	// loaded from TLB
@@ -118,9 +140,9 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 		DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
 		return -1;
 	}
-	entry->use = false;
-	if (writing)
-		entry->dirty = true;
+	//entry->use = false;
+	//if (writing)
+	//	entry->dirty = true;
 	*physAddr = pageFrame * PageSize + offset;
 	ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
 	DEBUG('a', "Phys addr = 0x%x\n", *physAddr);

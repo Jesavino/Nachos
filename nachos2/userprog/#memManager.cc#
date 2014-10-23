@@ -1,0 +1,12 @@
+#ifdef CHANGED
+
+#include "memManager.h"
+
+
+void MemoryManager::MemoryManager() {
+
+}
+
+
+
+#endif
