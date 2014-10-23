@@ -401,13 +401,15 @@ ExceptionHandler(ExceptionType which)
 
 	  case SC_Exit:
 	    exit();
-	    interrupt->Halt();
-	
+	    //interrupt->Halt();
+	    break;
 	  case SC_Exec:
 	    execFile();
 	    incrementPC();
 	    break;
 	  case SC_Join:
+	    incrementPC();
+	    break;
 	    interrupt->Halt();
 	    /*	  case SC_Fork:
 
