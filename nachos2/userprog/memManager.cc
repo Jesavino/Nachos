@@ -78,12 +78,12 @@ MemoryManager::WriteMem( int addr, int size, int value) {
 
 int 
 MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
-	int i;
+	unsigned int i;
 	unsigned int vpn, offset;
 	TranslationEntry *entry;
 	unsigned int pageFrame;
 	AddrSpace *addrSpace;
-	BitMap *bitmap;
+	TranslationEntry *pageTable;
 
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
 
@@ -118,21 +118,28 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 	
 	// Get the address space from the current thread
 	addrSpace = currentThread->space;
-	bitmap = addrSpace->bitmap;
+	pageTable = addrSpace->getPageTable();
 
 	// we have the VPN, should line up with ith physical page it has
-	unsigned int count = 0;
-	for ( i = 0; i < NumPhysPages; i++) {
-		if (bitmap->Test(i)) {
-			count++;
-			if ( count == vpn ) {
-				pageFrame = i;
-				break;
-			}
+	if (pageTable == NULL) {
+		fprintf(stderr, "Page Table null\n");
+		return -1;
+	}
+	for (entry = NULL, i = 0 ; i < addrSpace->numPages ; i++) {
+		if (pageTable[i].valid && ((unsigned)pageTable[i].virtualPage == vpn)) {
+			entry = &pageTable[i];
+			break;
 		}
 	}
+	if ( entry == NULL)
+		return -1;
 
-	// pageFrame = entry->physicalPage;
+	if (entry->readOnly && writing) {
+		fprintf(stderr, "Attempting to write a read only file!!!\n");
+		return -1;
+	}
+
+	pageFrame = entry->physicalPage;
 
 	// if the pageFrame is too big, there is a problem. Something wrong 
 	// loaded from TLB
@@ -140,9 +147,9 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 		DEBUG('a', "*** frame %d > %d!\n", pageFrame, NumPhysPages);
 		return -1;
 	}
-	//entry->use = false;
-	//if (writing)
-	//	entry->dirty = true;
+	entry->use = false;
+	if (writing)
+		entry->dirty = true;
 	*physAddr = pageFrame * PageSize + offset;
 	ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
 	DEBUG('a', "Phys addr = 0x%x\n", *physAddr);

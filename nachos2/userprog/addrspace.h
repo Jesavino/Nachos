@@ -30,19 +30,21 @@ class AddrSpace {
 					// before jumping to user code
 
     void SaveState();			// Save/restore address space-specific
-    void RestoreState();		// info on a context switch 
+    void RestoreState();		// info on a context switch
+ 
+	TranslationEntry* getPageTable(); 
 
 	BitMap *bitmap;
 #ifdef CHANGED
     AddrSpace Fork();
 #endif
 
-  private:
-#ifndef USE_TLB
+//  private:
+//#ifndef USE_TLB
     TranslationEntry *pageTable;	// Assume linear page table translation
-#endif					// for now!
+//#endif					// for now!
     unsigned int numPages;		// Number of pages in the virtual 
-					// address space
+						// address space		
 };
 
 #endif // ADDRSPACE_H

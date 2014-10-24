@@ -47,7 +47,7 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 SynchConsole *synchConsole;
-
+BitMap *bitmap;
 // Increments the program counters
 void incrementPC() {
 

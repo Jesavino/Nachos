@@ -21,6 +21,13 @@
 #include "noff.h"
 #include <new>
 
+// Returns available physical address
+int
+getPhysPageNum() {
+	int pageNumber;
+	pageNumber = bitmap->Find();
+}
+
 //----------------------------------------------------------------------
 // SwapHeader
 // 	Do little endian to big endian conversion on the bytes in the 
@@ -65,7 +72,8 @@ AddrSpace::AddrSpace(OpenFile *executable)
 #ifndef USE_TLB
     unsigned int i;
 #endif
-
+	
+	if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
@@ -79,40 +87,76 @@ AddrSpace::AddrSpace(OpenFile *executable)
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
 
-    ASSERT(numPages <= NumPhysPages);		// check we're not trying
+	ASSERT(bitmap->NumClear() >= numPages);
+    //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
-#ifndef USE_TLB
+//#ifndef USE_TLB
 // first, set up the translation 
-	bitmap = new(std::nothrow) BitMap(NumPhysPages);
+	int physPage;
     pageTable = new(std::nothrow) TranslationEntry[numPages];
-    for (i = 0; i < numPages; i++) {
-	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	pageTable[i].physicalPage = i;
-	pageTable[i].valid = true;
-	pageTable[i].use = false;
-	pageTable[i].dirty = false;
-	pageTable[i].readOnly = false;  // if the code segment was entirely on 
-					// a separate page, we could set its 
-					// pages to be read-only
+    for (int i = 0; i < numPages; i++) {
+		pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+		physPage = getPhysPageNum();
+		pageTable[i].physicalPage = physPage;
+		pageTable[i].valid = true;
+		pageTable[i].use = false;
+		pageTable[i].dirty = false;
+		pageTable[i].readOnly = false;  // if the code segment was entirely on 
+					// a separate page, we could set its 		
+			// pages to be read-only
+		bzero(&physPage , PageSize);
     }
-#endif    
-
+//#endif    
+	
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size);
+    //bzero(machine->mainMemory, size);
+
+	int * addr;
+	memManager->Translate(pageTable[0].virtualPage , addr, noffH.code.size, true);
+	int toWrite,
+	int remainder = 0;
+	toWrite = noffH.code.size;
+	i = 0;
+	while(toWrite > 0) {
+		memManager->Translate(pageTable[i].virtualPage , addr, noffH.code.size ,true);
+		if (toWrite > PageSize) {
+			executable->ReadAt(&addr, PageSize , noffH.code.inFileAddr);
+			i++;
+			toWrite -= PageSize;
+		} else {
+			executable->ReadAt(&addr, noffH.code.size , noffH.code. inFileAddr);
+			reminader = PageSize - noffH.code.size;
+			break;
+		}
+	}
+
+	toWrite = noffH.initData.size;
+
+	// NOT DONE NOT DONE NOT DONE NEED TO FIX BOO
+	if (remainder > toWrite)
+		executable->ReadAt(&addr, noffH.initData.size, 
+			noffH.initData.inFileAddr + (PageSize - remainder) + 1 );
+	else {
+		executable->ReadAt(&addr, remainder , noffH.initData.inFileAddr);
+	}
+	
 
 // then, copy in the code and data segments into memory
+	/*
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]),
-			noffH.code.size, noffH.code.inFileAddr);
+        executable->ReadAt(&addr, noffH.code.size, noffH.code.inFileAddr);
     }
+	*/
+	
+
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
 			noffH.initData.virtualAddr, noffH.initData.size);
@@ -202,4 +246,8 @@ void AddrSpace::RestoreState()
 
 }
 */
+TranslationEntry*
+AddrSpace::getPageTable() {
+	return pageTable;
+}
 #endif
