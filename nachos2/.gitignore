@@ -12,3 +12,6 @@ test/fromcons
 test/testfy
 *.tgz
 test/testexec
+test/bogus2
+test/kid
+test/parent

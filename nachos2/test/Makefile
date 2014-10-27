@@ -34,7 +34,8 @@ CPP = /usr/bin/cpp -E
 INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
-all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec
+all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec bogus2\
+	parent kid
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -100,4 +101,22 @@ testexec.o: testexec.c
 testexec: testexec.o start.o
 	$(LD) $(LDFLAGS) start.o testexec.o -o testexec.coff
 	../bin/coff2noff testexec.coff testexec
+
+bogus2.o: bogus2.c
+	$(CC) $(CFLAGS) -c bogus2.c
+bogus2: bogus2.o start.o
+	$(LD) $(LDFLAGS) start.o bogus2.o -o bogus2.coff
+	../bin/coff2noff bogus2.coff bogus2
+
+parent.o: parent.c
+	$(CC) $(CFLAGS) -c parent.c
+parent: parent.o start.o
+	$(LD) $(LDFLAGS) start.o parent.o -o parent.coff
+	../bin/coff2noff parent.coff parent
+
+kid.o: kid.c
+	$(CC) $(CFLAGS) -c kid.c
+kid: kid.o start.o
+	$(LD) $(LDFLAGS) start.o kid.o -o kid.coff
+	../bin/coff2noff kid.coff kid
 

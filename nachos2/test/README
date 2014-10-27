@@ -1,0 +1,9 @@
+Source File         Desired Behavior
+===========         ================
+bogus2.c            Program shouldn't even start to execute,
+                    but no ASSERT violation should happen.
+
+parent.c            A 2-process system: parent Exec()s
+kid.c               kid and Join()s kid when it Exit()s.
+                    Parent should get the Exit status value
+                    from kid. 
