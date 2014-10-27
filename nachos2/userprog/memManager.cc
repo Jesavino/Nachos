@@ -4,8 +4,10 @@
 
 
 MemoryManager::MemoryManager(Machine *sysMachine ) {
-	machine = sysMachine;
 
+	machine = sysMachine;
+	for (int i = 0 ; i < NumPhysPages ; i++)
+		physPageInfo[i] = 0;
 
 }
 
@@ -76,10 +78,12 @@ MemoryManager::WriteMem( int addr, int size, int value) {
 
 int 
 MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
-	int i;
+	unsigned int i;
 	unsigned int vpn, offset;
 	TranslationEntry *entry;
 	unsigned int pageFrame;
+	AddrSpace *addrSpace;
+	TranslationEntry *pageTable;
 
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
 
@@ -91,7 +95,8 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 	// calculate the vpn and offset within the page from VA
 	vpn = (unsigned) virtAddr / PageSize;
 	offset = (unsigned) virtAddr % PageSize;
-
+	
+	/* THIS IS ALL CRAP FROM THE OLD TRANSLATE
 	if( machine->tlb == NULL)
 		fprintf(stderr, "Error, TLB is NULL!\n");
 	else {
@@ -101,8 +106,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 				break;
 			}
 		if (entry == NULL) {
-			DEBUG('a', "*** no valid TLB entry found for this virtual page!\n");
-			return -1;
+			// THIS IS WHAT WE NEED TO IMPLEMENT. YAY.
 		}	
 	}
 	
@@ -110,6 +114,31 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 		DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
 		return -1;
 	}	
+	*/
+	
+	// Get the address space from the current thread
+	addrSpace = currentThread->space;
+	pageTable = addrSpace->getPageTable();
+
+	// we have the VPN, should line up with ith physical page it has
+	if (pageTable == NULL) {
+		fprintf(stderr, "Page Table null\n");
+		return -1;
+	}
+	for (entry = NULL, i = 0 ; i < addrSpace->numPages ; i++) {
+		if (pageTable[i].valid && ((unsigned)pageTable[i].virtualPage == vpn)) {
+			entry = &pageTable[i];
+			break;
+		}
+	}
+	if ( entry == NULL)
+		return -1;
+
+	if (entry->readOnly && writing) {
+		fprintf(stderr, "Attempting to write a read only file!!!\n");
+		return -1;
+	}
+
 	pageFrame = entry->physicalPage;
 
 	// if the pageFrame is too big, there is a problem. Something wrong 

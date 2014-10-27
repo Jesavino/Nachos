@@ -32,7 +32,7 @@
 // in use or free.
 
 class BitMap {
-  public:
+  public:				
     BitMap(int nitems);		// Initialize a bitmap, with "nitems" bits
 				// initially, all bits are cleared.
     ~BitMap();			// De-allocate bitmap
