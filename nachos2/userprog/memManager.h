@@ -1,4 +1,6 @@
 #ifdef CHANGED
+#ifndef __MEMMANAGER_H__
+#define __MEMMANAGER_H__
 
 #include "machine.h"
 #include "addrspace.h"
@@ -26,4 +28,5 @@ class MemoryManager {
 };
 
 
+#endif
 #endif
