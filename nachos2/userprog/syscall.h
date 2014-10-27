@@ -124,6 +124,11 @@ void Fork(void (*func)());
  */
 void Yield();		
 
+/*
+ *	GLOBAL DATA
+ */
+BitMap *bitmap;
+
 #endif /* IN_ASM */
 
 #endif /* SYSCALL_H */

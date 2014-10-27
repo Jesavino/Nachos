@@ -24,8 +24,7 @@
 // Returns available physical address
 int
 getPhysPageNum() {
-	int pageNumber;
-	pageNumber = bitmap->Find();
+	return bitmap->Find();
 }
 
 //----------------------------------------------------------------------
@@ -87,7 +86,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
 
-	ASSERT(bitmap->NumClear() >= numPages);
+	ASSERT((unsigned int) bitmap->NumClear() >= numPages);
     //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
@@ -99,7 +98,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 // first, set up the translation 
 	int physPage;
     pageTable = new(std::nothrow) TranslationEntry[numPages];
-    for (int i = 0; i < numPages; i++) {
+    for (unsigned int i = 0; i < numPages; i++) {
 		pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
 		physPage = getPhysPageNum();
 		pageTable[i].physicalPage = physPage;
@@ -111,12 +110,17 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			// pages to be read-only
 		bzero(&physPage , PageSize);
     }
-//#endif    
+//#endif
+
+	    
 	
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
     //bzero(machine->mainMemory, size);
+	
+	
 
+	/* HERE BEGINS THE CRAP WE WROTE LATE TIME
 	int * addr;
 	memManager->Translate(pageTable[0].virtualPage , addr, noffH.code.size, true);
 	int toWrite,
@@ -148,22 +152,37 @@ AddrSpace::AddrSpace(OpenFile *executable)
 	
 
 // then, copy in the code and data segments into memory
-	/*
+	//
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
 			noffH.code.virtualAddr, noffH.code.size);
         executable->ReadAt(&addr, noffH.code.size, noffH.code.inFileAddr);
     }
-	*/
-	
-
+	**/
+	if (noffH.code.size > 0) {
+		DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
+			noffH.code.virtualAddr, noffH.code.size);
+		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
+		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
+		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int) buffer);
+		delete buffer;
+	}
+	if (noffH.initData.size > 0) {
+		DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
+			noffH.initData.virtualAddr, noffH.initData.size);
+		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
+		executable->ReadAt(buffer, noffH.initData.size, noffH.code.inFileAddr);
+		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int) buffer);
+		delete buffer;
+	}	
+	/*
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
 			noffH.initData.virtualAddr, noffH.initData.size);
         executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
 			noffH.initData.size, noffH.initData.inFileAddr);
     }
-
+	*/
 }
 
 //----------------------------------------------------------------------

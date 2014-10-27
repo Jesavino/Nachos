@@ -2,7 +2,6 @@
 
 #include "memManager.h"
 
-
 MemoryManager::MemoryManager(Machine *sysMachine ) {
 
 	machine = sysMachine;
