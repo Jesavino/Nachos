@@ -16,6 +16,8 @@
 #include "copyright.h"
 #include "filesys.h"
 #include "bitmap.h"
+#include "syscall.h"
+#include "memManager.h"
 
 #define UserStackSize		1024 	// increase this as necessary!
 
@@ -34,7 +36,6 @@ class AddrSpace {
  
 	TranslationEntry* getPageTable(); 
 
-	BitMap *bitmap;
 #ifdef CHANGED
     AddrSpace Fork();
 #endif
@@ -45,6 +46,7 @@ class AddrSpace {
 //#endif					// for now!
     unsigned int numPages;		// Number of pages in the virtual 
 						// address space		
+	MemoryManager *memManager;
 };
 
 #endif // ADDRSPACE_H
