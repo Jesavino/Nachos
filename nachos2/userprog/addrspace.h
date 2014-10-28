@@ -17,7 +17,10 @@
 #include "filesys.h"
 #include "bitmap.h"
 #include "syscall.h"
+
+#ifdef CHANGED
 #include "memManager.h"
+#endif
 
 #define UserStackSize		1024 	// increase this as necessary!
 
