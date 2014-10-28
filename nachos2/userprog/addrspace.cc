@@ -21,6 +21,10 @@
 #include "noff.h"
 #include <new>
 
+#ifdef CHANGED
+BitMap * bitmap;
+#endif
+
 // Returns available physical address
 int
 getPhysPageNum() {
@@ -167,7 +171,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.code.virtualAddr, noffH.code.size);
 		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
 		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int) buffer);
+		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int) buffer, this);
 		delete buffer;
 	}
 	if (noffH.initData.size > 0) {
@@ -175,7 +179,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.initData.virtualAddr, noffH.initData.size);
 		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
 		executable->ReadAt(buffer, noffH.initData.size, noffH.code.inFileAddr);
-		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int) buffer);
+		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int) buffer, this);
 		delete buffer;
 	}	
 	/*

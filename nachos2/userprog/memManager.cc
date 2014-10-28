@@ -11,14 +11,14 @@ MemoryManager::MemoryManager(Machine *sysMachine ) {
 }
 
 bool
-MemoryManager::ReadMem( int addr, int size, int *value) {
+MemoryManager::ReadMem( int addr, int size, int *value, AddrSpace * space) {
 	
 	int data, result;
 	int physicalAddress;
 
 	DEBUG('a', "Reading from VA 0x%x, size %d\n", addr, size);
 
-	result = Translate(addr, &physicalAddress, size, false);
+	result = Translate(addr, &physicalAddress, size, false, space);
 	if (result == -1)
 		return false;
 	switch (size) {
@@ -44,12 +44,12 @@ MemoryManager::ReadMem( int addr, int size, int *value) {
 
 }
 bool 
-MemoryManager::WriteMem( int addr, int size, int value) {
+MemoryManager::WriteMem( int addr, int size, int value, AddrSpace * space) {
 	int physicalAddress;
 	int result;
 	DEBUG('a', "Writing to VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
-	result = Translate(addr, &physicalAddress, size, true);
+	result = Translate(addr, &physicalAddress, size, true, space);
 
 	if(result == -1)
 		return false;
@@ -76,12 +76,11 @@ MemoryManager::WriteMem( int addr, int size, int value) {
 }
 
 int 
-MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
+MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, AddrSpace * space) {
 	unsigned int i;
 	unsigned int vpn, offset;
 	TranslationEntry *entry;
 	unsigned int pageFrame;
-	AddrSpace *addrSpace;
 	TranslationEntry *pageTable;
 
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
@@ -116,15 +115,14 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing) {
 	*/
 	
 	// Get the address space from the current thread
-	addrSpace = currentThread->space;
-	pageTable = addrSpace->getPageTable();
+	pageTable = space->getPageTable();
 
 	// we have the VPN, should line up with ith physical page it has
 	if (pageTable == NULL) {
 		fprintf(stderr, "Page Table null\n");
 		return -1;
 	}
-	for (entry = NULL, i = 0 ; i < addrSpace->numPages ; i++) {
+	for (entry = NULL, i = 0 ; i < space->numPages ; i++) {
 		if (pageTable[i].valid && ((unsigned)pageTable[i].virtualPage == vpn)) {
 			entry = &pageTable[i];
 			break;

@@ -127,8 +127,8 @@ void Yield();
 /*
  *	GLOBAL DATA
  */
-BitMap *bitmap;
-
+/*BitMap *bitmap;
+ */
 #endif /* IN_ASM */
 
 #endif /* SYSCALL_H */

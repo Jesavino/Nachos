@@ -6,16 +6,18 @@
 #include "addrspace.h"
 //#include "system.h"
 
+class AddrSpace;
+
 const static int maxPages = 20;
 
 class MemoryManager {
 
 	public:
 		MemoryManager(Machine* sysMachine );
-		bool ReadMem( int addr, int size, int *value);
-		bool WriteMem( int addr, int size, int value);
+		bool ReadMem( int addr, int size, int *value, AddrSpace * space);
+		bool WriteMem( int addr, int size, int value, AddrSpace * space);
 
-		int Translate(int virtAddr, int* physAddr, int size, bool writing);
+		int Translate(int virtAddr, int* physAddr, int size, bool writing, AddrSpace * Space);
 
 		int physPageInfo[NumPhysPages];		
 
