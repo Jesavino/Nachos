@@ -165,7 +165,7 @@ void Lock::Release() {
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
   // if the current thread does not have the lock, it can't release it
-  ASSERT(!isHeldByCurrentThread())
+  ASSERT(isHeldByCurrentThread())
 
   thread = (Thread *)queue->Remove();
   
