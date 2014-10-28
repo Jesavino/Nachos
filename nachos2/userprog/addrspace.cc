@@ -100,23 +100,24 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifdef CHANGED
 
+    int * physAddr;
 
 //#ifndef USE_TLB
 // first, set up the translation 
-	int physPage;
+    int physPage;
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
-		pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-		physPage = getPhysPageNum();
-		pageTable[i].physicalPage = machine->mainMemory[physPage];
-		pageTable[i].valid = true;
-		pageTable[i].use = false;
-		pageTable[i].dirty = false;
-		pageTable[i].readOnly = false;  // if the code segment was entirely on 
-					// a separate page, we could set its 		
-			// pages to be read-only
-		//pagesize == 128
-		bzero(&machine->mainMemory[physPage], PageSize);
+      pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+      physPage = getPhysPageNum();
+      pageTable[i].physicalPage = physPage;
+      pageTable[i].valid = true;
+      pageTable[i].use = false;
+      pageTable[i].dirty = false;
+      pageTable[i].readOnly = false;  // if the code segment was entirely on 
+      // a separate page, we could set its 		
+      // pages to be read-only
+      memManager->Translate(pageTable[i].virtualPage, physAddr, PageSize, true, this);
+      bzero(physAddr, PageSize);
     }
 //#endif
 
