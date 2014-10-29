@@ -100,9 +100,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifdef CHANGED
 
-    int * physAddr = NULL;
-
-
+	NumPages = numPages; // set global access for TLB management
 	memManager = new(std::nothrow) MemoryManager(machine);
 //#ifndef USE_TLB
 // first, set up the translation 
@@ -121,10 +119,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
       // pages to be read-only
       //memManager->Translate(pageTable[i].virtualPage, physAddr, PageSize, true, this);
       //bzero(physAddr, PageSize);
-		memManager->WriteMem(pageTable[i].virtualPage, PageSize, zeros, this);
+		memManager->WriteMem(pageTable[i].virtualPage * PageSize, PageSize, zeros, this);
     }
 //#endif
-
+	fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
 	    
 	
 // zero out the entire address space, to zero the unitialized data segment 
@@ -172,14 +170,18 @@ AddrSpace::AddrSpace(OpenFile *executable)
         executable->ReadAt(&addr, noffH.code.size, noffH.code.inFileAddr);
     }
 	**/
+	fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
 	if (noffH.code.size > 0) {
 		DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
 			noffH.code.virtualAddr, noffH.code.size);
 		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
 		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
+		fprintf(stderr, "Buffer is %x\n", buffer);
 		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int*)buffer, this);
 		delete buffer;
 	}
+	fprintf(stderr, "\n****** Past Code Init ********\n");
+	fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
 	if (noffH.initData.size > 0) {
 		DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
 			noffH.initData.virtualAddr, noffH.initData.size);
@@ -188,6 +190,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int*)buffer, this);
 		delete buffer;
 	}	
+	fprintf(stderr, "All memeory pre-allocation done\n");
 	/*
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
@@ -242,8 +245,15 @@ AddrSpace::InitRegisters()
    // accidentally reference off the end!
     machine->WriteRegister(StackReg, numPages * PageSize - 16);
     DEBUG('a', "Initializing stack register to %d\n", numPages * PageSize - 16);
+	PrintRegisters();
 }
+void
+AddrSpace::PrintRegisters() {
+	int i;
+	fprintf(stderr, "PCReg:   %d NextPCReg:    %d StackReg: %d\n", machine->ReadRegister(PCReg),
+		machine->ReadRegister(NextPCReg), machine->ReadRegister(StackReg));
 
+}
 //----------------------------------------------------------------------
 // AddrSpace::SaveState
 // 	On a context switch, save any machine state, specific

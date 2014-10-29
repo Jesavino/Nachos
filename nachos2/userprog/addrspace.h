@@ -43,6 +43,8 @@ class AddrSpace {
 
 #ifdef CHANGED
     AddrSpace Fork();
+	void PrintRegisters();
+	int NumPages;
 #endif
 
 //  private:

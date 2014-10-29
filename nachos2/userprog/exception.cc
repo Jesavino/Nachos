@@ -296,7 +296,7 @@ void exit() {
 //      info for page referenced.
 //
 //----------------------------------------------------------------------
-
+#ifdef CHANGED
 void
 HandleTLBFault(int vaddr)
 {
@@ -312,17 +312,22 @@ HandleTLBFault(int vaddr)
       victim = i;
       break;
     }
-
+	
   // Otherwise clobber random slot in TLB
 
+	// need to get correct physical page
+	TranslationEntry * table = currentThread->space->getPageTable();
+	// the ith entry is always the ith virtual page
+
   machine->tlb[victim].virtualPage = vpn;
-  machine->tlb[victim].physicalPage = vpn; // Explicitly assumes 1-1 mapping
+  machine->tlb[victim].physicalPage = table[vpn].physicalPage;
   machine->tlb[victim].valid = true;
   machine->tlb[victim].dirty = false;
   machine->tlb[victim].use = false;
   machine->tlb[victim].readOnly = false;
 }
 
+#endif
 #endif
 
 //----------------------------------------------------------------------

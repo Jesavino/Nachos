@@ -46,7 +46,7 @@ MemoryManager::ReadOneByte(int addr, int *value, AddrSpace *space) {
 }
 bool 
 MemoryManager::WriteMem( int addr, int size, int *value, AddrSpace * space) {
-	
+	//fprintf(stderr, "Writing to VA 0x%x\n" , addr);
 	bool status;
 	if ( size < 1 ) {
 		fprintf(stderr, "Cannot write less than one byte\n");
@@ -58,7 +58,6 @@ MemoryManager::WriteMem( int addr, int size, int *value, AddrSpace * space) {
 		DEBUG('a', "Writing to VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 		status = WriteOneByte(addr, value[i], space); // Make sure to bump addr and value!
 		addr++;
-		value++;
 		if(!status)
 			return false;
 	}
@@ -76,7 +75,7 @@ MemoryManager::WriteOneByte(int addr, int value, AddrSpace *space) {
 
 	if(result == -1)
 		return false;
-	fprintf(stderr , "Value is %d\n" , value);
+	//fprintf(stderr , "Value is %d\n" , value);
 	machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
 
 	return true;
@@ -145,7 +144,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	}
 
 	pageFrame = entry->physicalPage;
-
+	//fprintf(stderr, "Got VPN %d, Offset %d, physPage = %d\n", vpn, offset, pageFrame);
 	// if the pageFrame is too big, there is a problem. Something wrong 
 	// loaded from TLB
 	if (pageFrame >= NumPhysPages) {
@@ -155,7 +154,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	entry->use = false;
 	if (writing)
 		entry->dirty = true;
-	fprintf(stderr, "PageFrame %d PageSize %d offSet %d\n", pageFrame, PageSize, offset);
+	//fprintf(stderr, "PageFrame %d PageSize %d offSet %d\n", pageFrame, PageSize, offset);
 	*physAddr = pageFrame * PageSize + offset;
 	ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
 	DEBUG('a', "Phys addr = 0x%x\n", *physAddr);
