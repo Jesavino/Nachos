@@ -100,11 +100,14 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifdef CHANGED
 
-    int * physAddr;
+    int * physAddr = NULL;
 
+
+	memManager = new(std::nothrow) MemoryManager(machine);
 //#ifndef USE_TLB
 // first, set up the translation 
     int physPage;
+	int zeros[PageSize] = {0};
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
       pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
@@ -116,8 +119,9 @@ AddrSpace::AddrSpace(OpenFile *executable)
       pageTable[i].readOnly = false;  // if the code segment was entirely on 
       // a separate page, we could set its 		
       // pages to be read-only
-      memManager->Translate(pageTable[i].virtualPage, physAddr, PageSize, true, this);
-      bzero(physAddr, PageSize);
+      //memManager->Translate(pageTable[i].virtualPage, physAddr, PageSize, true, this);
+      //bzero(physAddr, PageSize);
+		memManager->WriteMem(pageTable[i].virtualPage, PageSize, zeros, this);
     }
 //#endif
 
@@ -173,7 +177,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.code.virtualAddr, noffH.code.size);
 		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
 		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int) buffer, this);
+		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int*)buffer, this);
 		delete buffer;
 	}
 	if (noffH.initData.size > 0) {
@@ -181,7 +185,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.initData.virtualAddr, noffH.initData.size);
 		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
 		executable->ReadAt(buffer, noffH.initData.size, noffH.code.inFileAddr);
-		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int) buffer, this);
+		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int*)buffer, this);
 		delete buffer;
 	}	
 	/*
