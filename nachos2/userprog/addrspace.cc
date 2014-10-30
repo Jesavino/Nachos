@@ -183,7 +183,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 		DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
 			noffH.initData.virtualAddr, noffH.initData.size);
 		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
-		executable->ReadAt(buffer, noffH.initData.size, noffH.code.inFileAddr);
+		executable->ReadAt(buffer, noffH.initData.size, noffH.initData.inFileAddr);
 		for (int j = 0; j < noffH.initData.size; j++) {
 		  memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
 		}
