@@ -108,7 +108,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 //#ifndef USE_TLB
 // first, set up the translation 
     int physPage;
-	int zeros[PageSize] = {0};
+    // int zeros[PageSize] = {0};
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
       pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
@@ -276,7 +276,7 @@ AddrSpace::InitRegisters()
 }
 void
 AddrSpace::PrintRegisters() {
-	int i;
+  //int i;
 	fprintf(stderr, "PCReg:   %d NextPCReg:    %d StackReg: %d\n", machine->ReadRegister(PCReg),
 		machine->ReadRegister(NextPCReg), machine->ReadRegister(StackReg));
 
