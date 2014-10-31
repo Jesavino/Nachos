@@ -231,6 +231,12 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
 AddrSpace::~AddrSpace()
 {
+#ifdef CHANGED
+  for (unsigned int i = 0; i < numPages; i++){
+    printf("%d\n", pageTable[i].physicalPage);
+    bitmap->Clear(pageTable[i].physicalPage);
+  }
+#endif
 #ifndef USE_TLB
    delete pageTable;
 #endif

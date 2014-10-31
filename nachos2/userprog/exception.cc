@@ -279,6 +279,7 @@ void execFile() {
 }  
 
 void exit() {
+  delete currentThread->space;
   currentThread->Finish();
   //what to do with error code.
 }
