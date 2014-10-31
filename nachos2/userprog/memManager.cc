@@ -12,23 +12,7 @@ MemoryManager::MemoryManager(Machine *sysMachine ) {
 
 bool
 MemoryManager::ReadMem( int addr, int size, int *value, AddrSpace * space) {
-	bool status;
-
-	if (size < 1) {
-		fprintf(stderr, "Cannot read less than one byte\n");
-		return false;
-	}
-	for (int i = 0 ; i < size ; i++) {
-		status = ReadOneByte(++addr, value, space);
-		if (!status)
-			return false;
-	}
-	return status;
-
-}
-bool
-MemoryManager::ReadOneByte(int addr, int *value, AddrSpace *space) {
-	int size = 1;
+	
 	int data, result;
 	int physicalAddress;
 
@@ -37,36 +21,30 @@ MemoryManager::ReadOneByte(int addr, int *value, AddrSpace *space) {
 	result = Translate(addr, &physicalAddress, size, false, space);
 	if (result == -1)
 		return false;
+	switch (size) {
+		case 1:
+			data = machine->mainMemory[physicalAddress];
+			*value = data;
+			break;
+		
+		case 2:
+			data = *(unsigned short *) &machine->mainMemory[physicalAddress];
+			*value = ShortToHost(data);
+			break;
 
-	data = machine->mainMemory[physicalAddress];
-	*value = data;
+		case 4:
+			data = *(unsigned int *) &machine->mainMemory[physicalAddress];
+			*value = WordToHost(data);
+			break;
+
+		default: ASSERT(false);
+	}
 	DEBUG('a', "\tvalue read = %8.8x\n", *value);
 	return (true);
 
 }
 bool 
-MemoryManager::WriteMem( int addr, int size, int *value, AddrSpace * space) {
-	//fprintf(stderr, "Writing to VA 0x%x\n" , addr);
-	bool status;
-	if ( size < 1 ) {
-		fprintf(stderr, "Cannot write less than one byte\n");
-		return false;
-	}
-	
-	for ( int i = 0 ; i < size ; i++) {
-		
-		DEBUG('a', "Writing to VA 0x%x, size %d, value 0x%x\n", addr, size, value);
-		status = WriteOneByte(addr, value[i], space); // Make sure to bump addr and value!
-		addr++;
-		if(!status)
-			return false;
-	}
-	return status;
-
-}
-bool
-MemoryManager::WriteOneByte(int addr, int value, AddrSpace *space) {
-	int size = 1;
+MemoryManager::WriteMem( int addr, int size, int value, AddrSpace * space) {
 	int physicalAddress;
 	int result;
 	DEBUG('a', "Writing to VA 0x%x, size %d, value 0x%x\n", addr, size, value);
@@ -75,8 +53,23 @@ MemoryManager::WriteOneByte(int addr, int value, AddrSpace *space) {
 
 	if(result == -1)
 		return false;
-	//fprintf(stderr , "Value is %d\n" , value);
-	machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
+	switch (size) {
+		case 1:
+			machine->mainMemory[physicalAddress] = (unsigned char) (value & 0xff);
+			break;
+		
+		case 2:
+			*(unsigned short *) &machine->mainMemory[physicalAddress]
+				= ShortToMachine((unsigned short) (value & 0xffff));
+			break;
+
+		case 4:
+			*(unsigned int *) &machine->mainMemory[physicalAddress]
+				= ShortToMachine((unsigned short) (value & 0xffff));
+			break;
+
+		default: ASSERT(false);
+	}
 
 	return true;
 
@@ -144,7 +137,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	}
 
 	pageFrame = entry->physicalPage;
-	//fprintf(stderr, "Got VPN %d, Offset %d, physPage = %d\n", vpn, offset, pageFrame);
+
 	// if the pageFrame is too big, there is a problem. Something wrong 
 	// loaded from TLB
 	if (pageFrame >= NumPhysPages) {
@@ -154,7 +147,6 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	entry->use = false;
 	if (writing)
 		entry->dirty = true;
-	//fprintf(stderr, "PageFrame %d PageSize %d offSet %d\n", pageFrame, PageSize, offset);
 	*physAddr = pageFrame * PageSize + offset;
 	ASSERT((*physAddr >= 0) && ((*physAddr + size) <= MemorySize));
 	DEBUG('a', "Phys addr = 0x%x\n", *physAddr);
