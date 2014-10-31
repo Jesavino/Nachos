@@ -254,7 +254,11 @@ AddrSpace::InitRegisters()
 //----------------------------------------------------------------------
 
 void AddrSpace::SaveState() 
-{}
+{
+  for (int i = 0; i < 4; i++) {
+    machine->tlb[i].valid=0;
+  }
+}
 
 //----------------------------------------------------------------------
 // AddrSpace::RestoreState
