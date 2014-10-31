@@ -100,8 +100,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifdef CHANGED
 
-	NumPages = numPages; // set global access for TLB management
-	memManager = new(std::nothrow) MemoryManager(machine);
+	//NumPages = numPages; // set global access for TLB management
+	//memManager = new(std::nothrow) MemoryManager(machine);
+    int physAddr;
+    memManager = new(std::nothrow) MemoryManager(machine);
+
 //#ifndef USE_TLB
 // first, set up the translation 
     int physPage;
@@ -117,9 +120,14 @@ AddrSpace::AddrSpace(OpenFile *executable)
       pageTable[i].readOnly = false;  // if the code segment was entirely on 
       // a separate page, we could set its 		
       // pages to be read-only
+
       //memManager->Translate(pageTable[i].virtualPage, physAddr, PageSize, true, this);
       //bzero(physAddr, PageSize);
-		memManager->WriteMem(pageTable[i].virtualPage * PageSize, PageSize, zeros, this);
+	  //memManager->WriteMem(pageTable[i].virtualPage * PageSize, PageSize, zeros, this);
+     
+      memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
+      bzero(machine->mainMemory + physAddr, PageSize);
+
     }
 //#endif
 	fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
@@ -176,8 +184,13 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.code.virtualAddr, noffH.code.size);
 		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
 		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-		fprintf(stderr, "Buffer is %x\n", buffer);
-		memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int*)buffer, this);
+
+		//fprintf(stderr, "Buffer is %x\n", buffer);
+		//memManager->WriteMem(noffH.code.virtualAddr, noffH.code.size, (int*)buffer, this);
+
+		for (int j = 0; j < noffH.code.size; j++) {
+		  memManager->WriteMem(noffH.code.virtualAddr + j, 1, (int) buffer[j], this);
+		}
 		delete buffer;
 	}
 	fprintf(stderr, "\n****** Past Code Init ********\n");
@@ -187,7 +200,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 			noffH.initData.virtualAddr, noffH.initData.size);
 		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
 		executable->ReadAt(buffer, noffH.initData.size, noffH.code.inFileAddr);
-		memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int*)buffer, this);
+
+		//memManager->WriteMem(noffH.initData.virtualAddr, noffH.initData.size, (int*)buffer, this);
+		for (int j = 0; j < noffH.initData.size; j++) {
+		  memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
+		}
 		delete buffer;
 	}	
 	fprintf(stderr, "All memeory pre-allocation done\n");

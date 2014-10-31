@@ -998,6 +998,8 @@ translate.o: ../machine/translate.cc /usr/include/stdc-predef.h \
  ../threads/utility.h ../threads/thread.h ../threads/scheduler.h \
  ../threads/list.h ../machine/interrupt.h ../threads/list.h \
  ../machine/stats.h ../machine/timer.h
+parentchild.o: ../userprog/parentchild.cc /usr/include/stdc-predef.h \
+ ../userprog/parentchild.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above
