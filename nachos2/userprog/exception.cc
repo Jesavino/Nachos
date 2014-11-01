@@ -122,11 +122,11 @@ void writeFile() {
 	int size = machine->ReadRegister(5);
 	whence = machine->ReadRegister(4);
 
-	stringarg = new(std::nothrow) char[size];
+	stringarg = new(std::nothrow) char[size + 1];
 	for (int i = 0 ; i < size ; i++)
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
- 
+	stringarg[size] = '\0';
 	int file = machine->ReadRegister(6);
 
 	// Here we will add writing to the console specifically
