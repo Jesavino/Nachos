@@ -50,6 +50,7 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 SynchConsole *synchConsole;
+
 // Increments the program counters
 void incrementPC() {
 
@@ -62,17 +63,28 @@ void incrementPC() {
 }
 // create a new file
 void createNewFile() {
-
+	int physAddr;
 	DEBUG('a', "Creating a new file.\n");
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
-
-	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	AddrSpace *space = currentThread->space;
+	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	/*  Old working version w/ 1to1 mem 
 	for (int i = 0 ; i < 127 ; i++) 
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	*/
+	for ( int i = 0 ; i < 127 ; i++) {
+		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
+			fprintf(stderr, "Bad Translation\n");
+			break;
+		}
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
+		whence++;
+	}
+	// */
 	stringarg[127] = '\0';
 
-	//fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
 		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
@@ -80,13 +92,26 @@ void createNewFile() {
 }
 // open a file
 void openFile() {
+	int physAddr;
+	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Opening file.\n");
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 
 	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+	/*
 	for (int i = 0 ; i < 127 ; i++)
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	stringarg[127] = '\0';
+	*/
+	for ( int i = 0 ; i < 127 ; i++ ) {
+		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
+			fprintf(stderr, "Bad Translation\n");
+			break;
+		}
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
+		whence++;
+	}
 	stringarg[127] = '\0';
 
 	//fprintf(stderr, "Attempting to open filename %s\n", stringarg);
@@ -117,6 +142,8 @@ void openFile() {
 }
 // write to the specified file
 void writeFile() {
+	int physAddr;
+	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Writing to a file\n");
 	
 	int size = machine->ReadRegister(5);
@@ -126,7 +153,16 @@ void writeFile() {
 	for (int i = 0 ; i < size ; i++)
 		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
- 
+ 	
+	for (int i = 0 ; i < size ; i++) {
+		if ( ! space->memManager->Translate(whence, &physAddr, 1, false, space)) {
+			fprintf(stderr, "Error in Write Translation\n");
+			break;
+		}
+		if ((stringarg[i] - machine->mainMemory[physAddr]) == '\0') break;
+		whence++;
+	}
+
 	int file = machine->ReadRegister(6);
 
 	// Here we will add writing to the console specifically
@@ -150,7 +186,8 @@ void writeFile() {
 // read from the specified file
 void readFile() {
 	DEBUG('a' , "Reading from File\n");
-	
+	AddrSpace* space = currentThread->space;
+	int physAddr;
 	int file = machine->ReadRegister(6);
 	if (file < 0 || file > 9) {
 		fprintf(stderr, "Invalid file read attempt\n");
@@ -159,15 +196,20 @@ void readFile() {
 	// in this case, whence is mainMemory address of buffer to read into
 	whence =  machine->ReadRegister(4);	
 
-	char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 	if (file == ConsoleInput) {
 		char * readChar = new(std::nothrow) char[128];
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
 		for( int i = 0 ; i < numBytes ; i++) {
 			readChar[i] = synchConsole->SynchGetChar();
+			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
+				fprintf(stderr, "Error writing to StdInput\n");
+				break;
+			}
 		}
-		readChar[127] = '\0';
-		strcpy(&machine->mainMemory[whence] , readChar);
+		//readChar[127] = '\0';
+		 
+		
+		//strcpy(&machine->mainMemory[whence] , readChar);
 		machine->WriteRegister(2, numBytes);
 	}
 	else if(!openFiles[file].used){
@@ -175,12 +217,19 @@ void readFile() {
 		machine->WriteRegister(2, -1);
 	}
 	else {
+	
+		char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 		OpenFile *fileToRead = openFiles[file].openFile;
 
 		int numRead = fileToRead->Read( buffer , numBytes );
-
+		for ( int i = 0 ; i < numBytes ; i++) {
+			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
+				fprintf(stderr, "Error reading from file in memory write\n");
+				break;
+			}
+		}
 		//int len = strlen(buffer);
-		strcpy(&machine->mainMemory[whence] , buffer);
+		//strcpy(&machine->mainMemory[whence] , buffer);
 		machine->WriteRegister(2 , numRead);
 	}
 }
