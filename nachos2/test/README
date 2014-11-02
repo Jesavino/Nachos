@@ -7,3 +7,20 @@ parent.c            A 2-process system: parent Exec()s
 kid.c               kid and Join()s kid when it Exit()s.
                     Parent should get the Exit status value
                     from kid. 
+
+wideexec.c          Wideexec Execs three kids and waits
+widekid1.c          for them to terminate. May want to
+widekid2.c          kick up NumPhysPages in machine.h
+widekid3.c          to run this.
+
+deepexec.c          The deepexec program Execs kid4 and waits
+kid4.c              for it. The kid4 program execs kid5 and
+kid5.c              waits for it.
+
+toobig.c            Rigged so that the Exec() in toobig should
+kid6.c              fail. See comments in toobig.c for expected
+                    behavior/output.
+
+argtest.c           The argtest program Exec()s argkid, passing
+argkid.c            2 arguments. Note that this requires the
+                    Exec(char *, char *[], int) prototype.
