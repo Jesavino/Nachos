@@ -270,7 +270,7 @@ void execFile() {
   // put it in thread?
   thread->pid = pid++;
   printf("%d\n", thread->pid);
-  machine->WriteRegister(4, thread->pid);
+  machine->WriteRegister(2, thread->pid);
   
   thread->Fork(execThread, 0);
   delete executable;			// close file
@@ -279,9 +279,21 @@ void execFile() {
 }  
 
 void exit() {
+  int exitStatus = machine->ReadRegister(4);
+  DEBUG('s', "Exiting with status %d\n", exitStatus);
   delete currentThread->space;
   currentThread->Finish();
   //what to do with error code.
+}
+
+/* Only return once the the user program "id" has finished.  
+ * Return the exit status.
+ */
+
+void joinProcess() {
+  SpaceId joinId = machine->ReadRegister(4);
+  //dummy return for now
+  machine->WriteRegister(2, joinId);
 }
 
 #endif
@@ -413,6 +425,7 @@ ExceptionHandler(ExceptionType which)
 	    incrementPC();
 	    break;
 	  case SC_Join:
+	    joinProcess();
 	    incrementPC();
 	    break;
 	    interrupt->Halt();

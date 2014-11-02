@@ -168,7 +168,7 @@ AddrSpace::~AddrSpace()
 {
 #ifdef CHANGED
   for (unsigned int i = 0; i < numPages; i++){
-    printf("%d\n", pageTable[i].physicalPage);
+    //printf("%d\n", pageTable[i].physicalPage);
     bitmap->Clear(pageTable[i].physicalPage);
   }
 #endif
