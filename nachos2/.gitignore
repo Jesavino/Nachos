@@ -15,3 +15,5 @@ test/testexec
 test/bogus2
 test/kid
 test/parent
+test/cat
+test/cp
