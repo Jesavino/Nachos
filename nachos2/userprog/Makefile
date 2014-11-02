@@ -802,7 +802,7 @@ exception.o: ../userprog/exception.cc /usr/include/stdc-predef.h \
  ../userprog/addrspace.h ../threads/scheduler.h ../threads/list.h \
  ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
  ../machine/timer.h ../userprog/synchconsole.h ../machine/console.h \
- ../threads/synch.h ../userprog/../threads/thread.h
+ ../threads/synch.h ../threads/thread.h ../userprog/processinfo.h
 progtest.o: ../userprog/progtest.cc /usr/include/stdc-predef.h \
  ../threads/copyright.h ../threads/system.h ../threads/copyright.h \
  ../threads/utility.h ../machine/sysdep.h /usr/include/stdlib.h \
@@ -836,7 +836,7 @@ progtest.o: ../userprog/progtest.cc /usr/include/stdc-predef.h \
  ../userprog/addrspace.h ../threads/scheduler.h ../threads/list.h \
  ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
  ../machine/timer.h ../machine/console.h ../threads/synch.h \
- ../userprog/synchconsole.h
+ ../userprog/synchconsole.h ../userprog/processinfo.h ../threads/thread.h
 memManager.o: ../userprog/memManager.cc /usr/include/stdc-predef.h \
  ../userprog/memManager.h ../machine/machine.h ../threads/copyright.h \
  ../threads/utility.h ../threads/copyright.h ../machine/sysdep.h \
@@ -1018,7 +1018,17 @@ processinfo.o: ../userprog/processinfo.cc /usr/include/stdc-predef.h \
  /usr/include/wchar.h \
  /usr/lib64/gcc/x86_64-suse-linux/4.8/include/stdarg.h \
  /usr/include/bits/stdio_lim.h /usr/include/bits/sys_errlist.h \
- /usr/include/string.h
+ /usr/include/string.h ../threads/synch.h ../threads/thread.h \
+ ../machine/machine.h ../threads/utility.h ../machine/translate.h \
+ ../machine/disk.h ../userprog/addrspace.h ../filesys/filesys.h \
+ ../filesys/openfile.h /usr/include/c++/4.8/new \
+ /usr/include/c++/4.8/x86_64-suse-linux/bits/c++config.h \
+ /usr/include/c++/4.8/x86_64-suse-linux/bits/os_defines.h \
+ /usr/include/c++/4.8/x86_64-suse-linux/bits/cpu_defines.h \
+ /usr/include/c++/4.8/exception \
+ /usr/include/c++/4.8/bits/atomic_lockfree_defines.h ../userprog/bitmap.h \
+ ../filesys/openfile.h ../userprog/syscall.h ../userprog/memManager.h \
+ ../userprog/addrspace.h ../threads/list.h ../threads/thread.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above

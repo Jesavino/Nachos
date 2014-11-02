@@ -16,6 +16,7 @@
 #include <new>
 #ifdef CHANGED
 #include "synchconsole.h"
+#include "processinfo.h"
 #endif
 //----------------------------------------------------------------------
 // StartProcess

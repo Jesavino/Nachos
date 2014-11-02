@@ -26,7 +26,8 @@
 #include "syscall.h"
 #include "synchconsole.h"
 #ifdef CHANGED
-#include "../threads/thread.h"
+#include "thread.h"
+#include "processinfo.h"
 #endif
 #ifdef USE_TLB
 
@@ -50,6 +51,7 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 SynchConsole *synchConsole;
+Lock * procLock = new(std::nothrow) Lock("global process lock");
 // Increments the program counters
 void incrementPC() {
 
@@ -264,11 +266,13 @@ void execFile() {
   space = new(std::nothrow) AddrSpace(executable);    
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = space;
-  thread->procInfo = new(std::nothrow) ProcessInfo(currentThread->pid, thread->pid);
-  
+  procLock->Acquire();
+  thread->pid = pid++;
+  thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
+  currentThread->procInfo->AddChild(thread->procInfo);
+  procLock->Release();
   // calling thread given this threads pid.
   // put it in thread?
-  thread->pid = pid++;
   printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
   
@@ -281,6 +285,13 @@ void execFile() {
 void exit() {
   int exitStatus = machine->ReadRegister(4);
   DEBUG('s', "Exiting with status %d\n", exitStatus);
+  // set status in process to done
+  procLock->Acquire();
+  currentThread->procInfo->setStatus(DONE);
+  currentThread->procInfo->WakeParent();
+
+  currentThread->procInfo->setExitStatus(exitStatus);
+  procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
   //what to do with error code.
@@ -295,7 +306,9 @@ void joinProcess() {
 
   // delete processinfo for each child that is joined.
   // because once they are joined, we do not need them anymore.
+  procLock->Acquire();
   int exitStatus = currentThread->procInfo->ProcessJoin(joinId);
+  procLock->Release();
   //dummy return for now
   machine->WriteRegister(2, exitStatus);
 }

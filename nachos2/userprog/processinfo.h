@@ -3,7 +3,13 @@
 #define __PROCESSINFO_H__
 
 #include "list.h"
-#define  RUNNING  0
+#include "synch.h"
+#include "thread.h"
+
+//class Lock;
+//class Condition;
+
+#define  RUN  0
 #define  ZOMBIE   1
 #define  DONE     2
 
@@ -12,16 +18,34 @@ typedef int SpaceId;
 class ProcessInfo {
  public:
 
+  // CONSTRUCTORS
   ProcessInfo(SpaceId id, SpaceId parentid);
-  void ProcessJoin(SpaceId childId);
+  ProcessInfo(SpaceId id);
+
+  // DESTRUCTOR
+  ~ProcessInfo();
+
+  // other
+  int ProcessJoin(SpaceId childId);
   int GetStatus();
+  int GetExitStatus();
+  void setStatus(int newStatus);
+  void setExitStatus(int eStatus);
+  void WakeParent();
+
+  int GetPid();
+  void AddChild(ProcessInfo *child);
 
  private:
+
   SpaceId pid;
   SpaceId parentId;
-  List children;
+  List *children;
   int status;
   int exitStatus;
+  Lock * lock;
+  Condition * cond;
+
 };
 
 
