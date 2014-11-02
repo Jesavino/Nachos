@@ -149,20 +149,20 @@ void writeFile() {
 	int size = machine->ReadRegister(5);
 	whence = machine->ReadRegister(4);
 
-	stringarg = new(std::nothrow) char[size];
-	for (int i = 0 ; i < size ; i++)
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
+	stringarg = new(std::nothrow) char[size + 1];
+	//for (int i = 0 ; i < size ; i++)
+	//	if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
 	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
  	
 	for (int i = 0 ; i < size ; i++) {
-		if ( ! space->memManager->Translate(whence, &physAddr, 1, false, space)) {
+		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
 		if ((stringarg[i] - machine->mainMemory[physAddr]) == '\0') break;
-		whence++;
 	}
 
+	stringarg[size] = '\0';
 	int file = machine->ReadRegister(6);
 
 	// Here we will add writing to the console specifically
@@ -187,7 +187,6 @@ void writeFile() {
 void readFile() {
 	DEBUG('a' , "Reading from File\n");
 	AddrSpace* space = currentThread->space;
-	int physAddr;
 	int file = machine->ReadRegister(6);
 	if (file < 0 || file > 9) {
 		fprintf(stderr, "Invalid file read attempt\n");
@@ -294,15 +293,24 @@ void execThread(int arg) {
 void execFile() {
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
-  
+  AddrSpace *space = currentThread->space;
+	int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+  /* Removing one to one mapping
   for (int i = 0 ; i < 127 ; i++)
     if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
+*/
+  for ( int i = 0 ; i < 127 ; i++) {
+		if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
+			fprintf(stderr, "Invalid translate to exec'd file addr\n");
+			break;
+		}
+		if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
+	}
   filename[127] = '\0';
   
   fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
-  AddrSpace *space;
   
   if (executable == NULL) {
     printf("Unable to open file %s\n", filename);
@@ -328,6 +336,7 @@ void execFile() {
 }  
 
 void exit() {
+  delete currentThread->space;
   currentThread->Finish();
   //what to do with error code.
 }
