@@ -7,6 +7,8 @@
 #define  ZOMBIE   1
 #define  DONE     2
 
+typedef int SpaceId;
+
 class ProcessInfo {
  public:
 
@@ -17,9 +19,9 @@ class ProcessInfo {
  private:
   SpaceId pid;
   SpaceId parentId;
-  List childId;
+  List children;
   int status;
-    
+  int exitStatus;
 };
 
 

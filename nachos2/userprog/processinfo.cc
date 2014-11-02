@@ -6,7 +6,7 @@ ProcessInfo::ProcessInfo(SpaceId id, SpaceId parentid) {
   status = RUNNING;
 }
 
-void ProcessInfo::ProcessJoin(SpaceId childId, ProcessInfo childInfo) {
+void ProcessInfo::ProcessJoin(SpaceId childId) {
   
 }
 
