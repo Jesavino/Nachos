@@ -264,7 +264,7 @@ void execFile() {
   space = new(std::nothrow) AddrSpace(executable);    
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = space;
-
+  thread->procInfo = new(std::nothrow) ProcessInfo(currentThread->pid, thread->pid);
   
   // calling thread given this threads pid.
   // put it in thread?
@@ -292,8 +292,12 @@ void exit() {
 
 void joinProcess() {
   SpaceId joinId = machine->ReadRegister(4);
+
+  // delete processinfo for each child that is joined.
+  // because once they are joined, we do not need them anymore.
+  int exitStatus = currentThread->procInfo->ProcessJoin(joinId);
   //dummy return for now
-  machine->WriteRegister(2, joinId);
+  machine->WriteRegister(2, exitStatus);
 }
 
 #endif

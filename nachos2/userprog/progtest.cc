@@ -35,7 +35,10 @@ StartProcess(char *filename)
     }
     space = new(std::nothrow) AddrSpace(executable);    
     currentThread->space = space;
-
+#ifdef CHANGED
+    // this process has no parent, but we will give it a parentid of -1
+    currentThread->procInfo = new(std::nothrow) ProcessInfo(currentThread->pid, -1);
+#endif
     delete executable;			// close file
 
     space->InitRegisters();		// set the initial register values
