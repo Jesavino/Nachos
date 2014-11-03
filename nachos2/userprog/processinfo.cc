@@ -37,11 +37,12 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
     child = (ProcessInfo *) children->Remove();
     last = child->GetPid();
   }
+  printf("about to join\n");
   child->lock->Acquire();
   if (child->GetStatus() != DONE) {
     child->cond->Wait(child->lock);
   }
-
+  printf("joined\n");
   int eStatus = child->GetExitStatus();
   child->lock->Release();
   delete child;
@@ -70,23 +71,24 @@ void ProcessInfo::AddChild(ProcessInfo *child) {
 
 
 int ProcessInfo::GetStatus() {
-  lock->Acquire();
+  //  lock->Acquire();
   int returnStatus = status;
-  lock->Release();
+  //lock->Release();
   return returnStatus;
 }
 
 int ProcessInfo::GetExitStatus() {
-  lock->Acquire();
+  //  lock->Acquire();
   int returnStatus = exitStatus;
-  lock->Release();
+  //lock->Release();
   return returnStatus;
 }
 
 void ProcessInfo::setExitStatus(int eStatus) {
   lock->Acquire();
+  printf("in processinfo::setexitstatus\n");
   exitStatus = eStatus;
-  lock->Release()
+  lock->Release();
 }
 
 void ProcessInfo::setStatus(int newStatus) {

@@ -290,7 +290,7 @@ void execFile() {
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
   AddrSpace *space = currentThread->space;
-	int physAddr;
+  int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
   /* Removing one to one mapping
   for (int i = 0 ; i < 127 ; i++)
