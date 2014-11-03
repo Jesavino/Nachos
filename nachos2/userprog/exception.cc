@@ -52,6 +52,7 @@ char * stringarg;
 int whence;
 SynchConsole *synchConsole;
 Lock * procLock = new(std::nothrow) Lock("global process lock");
+
 // Increments the program counters
 void incrementPC() {
 
@@ -258,18 +259,11 @@ void closeFile() {
 
 }
 
-void forkProgram() {
+/*void forkProgram() {
   printf("in fork\n");
   VoidFunctionPtr func;
   func = (VoidFunctionPtr)machine->ReadRegister(4);
 
-  /*  int pc = machine->ReadRegister(PCReg);
-  machine->WriteRegister(PrevPCReg, pc);
-  pc = machine->ReadRegister(4);
-  machine->WriteRegister(PCReg, pc);
-  pc += 4;
-  machine->WriteRegister(NextPCReg, pc);
-  */
   Thread * t = new(std::nothrow) Thread("userprog");
   t->Fork(func, 0);
 }
@@ -278,6 +272,7 @@ void yieldProgram() {
   printf("in yield\n");
   currentThread->Yield();
 }
+*/
 
 void execThread(int arg) {
   
@@ -343,6 +338,7 @@ void exit() {
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
   procLock->Acquire();
+
   currentThread->procInfo->setStatus(DONE);
   currentThread->procInfo->WakeParent();
 
@@ -362,9 +358,9 @@ void joinProcess() {
 
   // delete processinfo for each child that is joined.
   // because once they are joined, we do not need them anymore.
-  procLock->Acquire();
+  //procLock->Acquire();
   int exitStatus = currentThread->procInfo->ProcessJoin(joinId);
-  procLock->Release();
+  //procLock->Release();
   //dummy return for now
   machine->WriteRegister(2, exitStatus);
 }

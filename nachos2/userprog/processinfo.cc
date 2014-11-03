@@ -24,6 +24,7 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
   // if its status == DONE, get its exitStatus and return that
   // if status != done, wait until it is.
   // when done, can delete the child.
+  lock->Acquire();
   SpaceId first = -1;
   SpaceId last;
   ProcessInfo * child = (ProcessInfo *)children->Remove();
@@ -45,35 +46,57 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
   child->lock->Release();
   delete child;
 
+  lock->Release();
 
   return eStatus;
 }
 
+
+
+
+
 SpaceId ProcessInfo::GetPid() {
-  return pid;
+  lock->Acquire();
+  int returnPid = pid;
+  lock->Release();
+  return returnPid;
 }
 
 void ProcessInfo::AddChild(ProcessInfo *child) {
+  lock->Acquire();
   children->Append(child);
+  lock->Release();
 }
 
 
 int ProcessInfo::GetStatus() {
-  return status;
+  lock->Acquire();
+  int returnStatus = status;
+  lock->Release();
+  return returnStatus;
 }
 
 int ProcessInfo::GetExitStatus() {
-  return exitStatus;
+  lock->Acquire();
+  int returnStatus = exitStatus;
+  lock->Release();
+  return returnStatus;
 }
 
 void ProcessInfo::setExitStatus(int eStatus) {
+  lock->Acquire();
   exitStatus = eStatus;
+  lock->Release()
 }
 
 void ProcessInfo::setStatus(int newStatus) {
+  lock->Acquire();
   status = newStatus;
+  lock->Release();
 }
 
 void ProcessInfo::WakeParent() {
+  lock->Acquire();
   cond->Signal(lock);
+  lock->Release();
 }
