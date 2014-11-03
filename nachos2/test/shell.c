@@ -27,9 +27,27 @@ main()
 	buffer[--i] = '\0';
 
 	if( i > 0 ) {
-		newProc = Exec(buffer);
-		Join(newProc);
+	  if ((newProc = Exec(buffer)) == -1) {
+	    prints("Cannot Exec file\n", ConsoleOutput);
+	  }
+	  else {
+	    Join(newProc);
+	  }
 	}
     }
 }
 
+
+prints(s,file)
+char *s;
+OpenFileId file;
+
+{
+  int count = 0;
+  char *p;
+
+  p = s;
+  while (*p++ != '\0') count++;
+  Write(s, count, file);  
+
+}
