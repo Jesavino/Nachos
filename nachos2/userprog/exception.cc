@@ -160,7 +160,7 @@ void writeFile() {
 			fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
-		if ((stringarg[i] - machine->mainMemory[physAddr]) == '\0') break;
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 	}
 
 	stringarg[size] = '\0';
