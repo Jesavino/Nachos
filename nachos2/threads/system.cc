@@ -141,6 +141,8 @@ Initialize(int argc, char **argv)
     scheduler = new(std::nothrow) Scheduler();		// initialize the ready queue
     if (randomYield)				// start the timer (if needed)
 	timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
+    else 
+      timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, 200);
 
     threadToBeDestroyed = NULL;
 
