@@ -7,7 +7,7 @@ ProcessInfo::ProcessInfo(SpaceId id, SpaceId parentid) {
   cond = new(std::nothrow) Condition("process Condition");
   lock = new(std::nothrow) Lock("process Lock");
   children = new(std::nothrow) List();
-  printf("in processinfo\n");
+  //printf("in processinfo\n");
 }
 
 ProcessInfo::~ProcessInfo() {
@@ -37,12 +37,12 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
     child = (ProcessInfo *) children->Remove();
     last = child->GetPid();
   }
-  printf("about to join\n");
+  //  printf("about to join\n");
   child->lock->Acquire();
   if (child->GetStatus() != DONE) {
     child->cond->Wait(child->lock);
   }
-  printf("joined\n");
+  //  printf("joined\n");
   int eStatus = child->GetExitStatus();
   child->lock->Release();
   delete child;
@@ -86,7 +86,7 @@ int ProcessInfo::GetExitStatus() {
 
 void ProcessInfo::setExitStatus(int eStatus) {
   lock->Acquire();
-  printf("in processinfo::setexitstatus\n");
+  //  printf("in processinfo::setexitstatus\n");
   exitStatus = eStatus;
   lock->Release();
 }
