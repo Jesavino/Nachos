@@ -324,7 +324,7 @@ void execFile() {
   procLock->Release();
   // calling thread given this threads pid.
   // put it in thread?
-  printf("%d\n", thread->pid);
+  //printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
   
   thread->Fork(execThread, 0);
@@ -340,9 +340,9 @@ void exit() {
   procLock->Acquire();
 
   currentThread->procInfo->setStatus(DONE);
-  currentThread->procInfo->WakeParent();
 
   currentThread->procInfo->setExitStatus(exitStatus);
+  currentThread->procInfo->WakeParent();
   procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
