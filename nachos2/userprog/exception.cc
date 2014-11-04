@@ -286,6 +286,43 @@ void execThread(int arg) {
 
 }
 
+void prepStack(int argc, char **argv, AddrSpace *space) {
+	int sp;
+	int len;
+	int argvAddr[argc];
+	int physAddr;
+	char * tmp;
+	sp = machine->ReadRegister(StackReg);
+	
+	for ( int i = 0 ; i < argc ; i++) {
+		len = strlen(argv[i]) + 1;
+		sp -= len;
+		tmp = argv[i];
+		for ( int j = 0; j < len ; j++) {
+			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
+			machine->mainMemory[physAddr] = tmp[j];
+		}
+		argvAddr[i] = sp;
+
+	}
+	// align SP
+	sp = sp & ~3;
+
+	// Allocate and fill the argv array
+	sp -= sizeof(int) * argc;
+
+	for ( int i = 0 ; i < argc; i++ ) {
+		space->memManager->Translate(sp + i*4, &physAddr, 1, false, space);
+		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
+	}
+	machine->WriteRegister(4, argc);
+	machine->WriteRegister(5, sp);
+
+	machine->WriteRegister(StackReg, sp - 8);
+
+
+
+}
 void execFile() {
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
@@ -328,10 +365,6 @@ void execFile() {
 		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
 	}
 
-
-
-
-
 	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
@@ -354,27 +387,16 @@ void execFile() {
   printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
   
+	// If there were args, prep the stack here
+	
+	if (j > 0)
+		prepStack(j ,argv, space);
+
   thread->Fork(execThread, 0);
   delete executable;			// close file
-  
+ 	incrementPC(); 
 
-}  
-
-void exit() {
-  int exitStatus = machine->ReadRegister(4);
-  DEBUG('s', "Exiting with status %d\n", exitStatus);
-  // set status in process to done
-  procLock->Acquire();
-
-  currentThread->procInfo->setStatus(DONE);
-  currentThread->procInfo->WakeParent();
-
-  currentThread->procInfo->setExitStatus(exitStatus);
-  procLock->Release();
-  delete currentThread->space;
-  currentThread->Finish();
-  //what to do with error code.
-}
+} 
 
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
@@ -513,7 +535,7 @@ ExceptionHandler(ExceptionType which)
 	    }
 
 	  case SC_Exit:
-	    exit();
+	    exit(1);
 	    //interrupt->Halt();
 	    break;
 	  case SC_Exec:
