@@ -61,7 +61,6 @@ typedef int SpaceId;
 /*SpaceId Exec(char *name);*/
 SpaceId Exec(char *name, char * args[]);
 #endif 
-
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
  */
