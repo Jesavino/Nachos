@@ -17,3 +17,6 @@ test/kid
 test/parent
 test/cat
 test/cp
+test/argkid
+test/argtest
+test/hello.out
