@@ -274,6 +274,9 @@ void yieldProgram() {
 }
 */
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
@@ -285,6 +288,9 @@ void execThread(int arg) {
                                         // by doing the syscall "exit"
 
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void execFile() {
   char * filename = new(std::nothrow) char[128];
@@ -333,6 +339,9 @@ void execFile() {
 
 }  
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void exit() {
   int exitStatus = machine->ReadRegister(4);
   DEBUG('s', "Exiting with status %d\n", exitStatus);
@@ -346,12 +355,14 @@ void exit() {
   procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
-  //what to do with error code.
 }
 
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
  */
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void joinProcess() {
   SpaceId joinId = machine->ReadRegister(4);
@@ -487,17 +498,18 @@ ExceptionHandler(ExceptionType which)
 
 	  case SC_Exit:
 	    exit();
-	    //interrupt->Halt();
 	    break;
+
 	  case SC_Exec:
 	    execFile();
 	    incrementPC();
 	    break;
+
 	  case SC_Join:
 	    joinProcess();
 	    incrementPC();
 	    break;
-	    interrupt->Halt();
+
 	    /*	  case SC_Fork:
 
 	    forkProgram();

@@ -142,6 +142,7 @@ Initialize(int argc, char **argv)
     if (randomYield)				// start the timer (if needed)
 	timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, randomYield);
 #ifdef CHANGED
+    // if no random time slicing, create a timer that interrupts every 100 ticks
     else 
       timer = new(std::nothrow) Timer(TimerInterruptHandler, 0, 0);
 #endif
