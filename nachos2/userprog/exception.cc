@@ -292,10 +292,8 @@ void execFile() {
   AddrSpace *space = currentThread->space;
   int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-  /* Removing one to one mapping
-  for (int i = 0 ; i < 127 ; i++)
-    if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
-*/
+  
+	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
 		if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			fprintf(stderr, "Invalid translate to exec'd file addr\n");
@@ -304,8 +302,37 @@ void execFile() {
 		if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
 	}
   filename[127] = '\0';
-  
-  fprintf(stderr, "Attempting to open filename %s\n", filename);
+
+	// Get arguments from the kernel
+	char * argv[10] = {NULL};
+	char * tmp = new(std::nothrow) char[128];
+	int arg;
+	whence = machine->ReadRegister(5);
+	space->memManager->ReadMem(whence, 4, &arg, space);
+	int j = 0;
+	int size;
+	while(arg != 0) {
+		for ( int i = 0 ; i < 127 ; i++) {
+			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
+		}
+		tmp[127] = '\0';
+		size = sizeof(char) * (strlen(tmp)+1); // null terminator
+		argv[j] = new(std::nothrow) char[size];
+		strcpy(*(argv + j) , tmp);		
+		j++;		
+		whence += 4;
+		space->memManager->ReadMem(whence, 4, &arg, space);
+	}
+	for (int i  = 0 ; i < 10 ; i++) {
+		if( argv[i] == NULL) break;
+		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
+	}
+
+
+
+
+
+	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {

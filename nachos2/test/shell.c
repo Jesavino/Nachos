@@ -27,7 +27,7 @@ main()
 	buffer[--i] = '\0';
 
 	if( i > 0 ) {
-	  if ((newProc = Exec(buffer)) == -1) {
+	  if ((newProc = Exec(buffer, "Hello")) == -1) {
 	    prints("Cannot Exec file\n", ConsoleOutput);
 	  }
 	  else {
