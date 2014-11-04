@@ -52,10 +52,8 @@ class AddrSpace {
 //#ifndef USE_TLB
     TranslationEntry *pageTable;	// Assume linear page table translation
 //#endif					// for now!
-#endif
     unsigned int numPages;		// Number of pages in the virtual 
 						// address space		
-#ifdef CHANGED
     MemoryManager *memManager;
 #endif
 };

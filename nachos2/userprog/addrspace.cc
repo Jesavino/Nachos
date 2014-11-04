@@ -76,20 +76,20 @@ AddrSpace::AddrSpace(OpenFile *executable)
     unsigned int i;
 #endif
 	
-	if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
+    if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
-		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
-    	SwapHeader(&noffH);
+	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
+      SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
-
+    
 // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
-			+ UserStackSize;	// we need to increase the size
+      + UserStackSize;	// we need to increase the size
 						// to leave room for the stack
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
-
+    
 #ifdef CHANGED
     ASSERT((unsigned int) bitmap->NumClear() >= numPages);
     //ASSERT(numPages <= NumPhysPages);		// check we're not trying
@@ -101,11 +101,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
 					numPages, size);
 #ifdef CHANGED
 
-	//NumPages = numPages; // set global access for TLB management
-	//memManager = new(std::nothrow) MemoryManager(machine);
+    //NumPages = numPages; // set global access for TLB management
+    //memManager = new(std::nothrow) MemoryManager(machine);
     int physAddr;
     memManager = new(std::nothrow) MemoryManager(machine);
-
+    
 //#ifndef USE_TLB
 // first, set up the translation 
     int physPage;
