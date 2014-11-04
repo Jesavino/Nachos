@@ -384,7 +384,7 @@ void execFile() {
   procLock->Release();
   // calling thread given this threads pid.
   // put it in thread?
-  printf("%d\n", thread->pid);
+  //printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
   
 	// If there were args, prep the stack here
@@ -394,9 +394,16 @@ void execFile() {
 
   thread->Fork(execThread, 0);
   delete executable;			// close file
- 	incrementPC(); 
+ 	
+  currentThread->procInfo->setStatus(DONE);
 
-} 
+  currentThread->procInfo->setExitStatus(exitStatus);
+  currentThread->procInfo->WakeParent();
+  procLock->Release();
+  delete currentThread->space;
+  currentThread->Finish();
+  //what to do with error code.
+}
 
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
