@@ -299,6 +299,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 			machine->mainMemory[physAddr] = tmp[j];
 			if(j == 0) argvAddr[i] = physAddr;
 		}
+		argvAddr[i] = sp;
 		
 
 	}
@@ -316,7 +317,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 			= WordToMachine((unsigned int) argvAddr[i]);*/
 	}
 	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
-	machine->WriteRegister(4, argcount);
+	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
 
 	machine->WriteRegister(StackReg, sp - 8);
@@ -330,9 +331,11 @@ void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
   currentThread->space->RestoreState();		// load page table register
-  if(argc) 
-		prepStack(argc, args, argSpace);
 
+  // If there were args, prep the stack here
+  if(argc) 
+    prepStack(argc, args, argSpace);
+  
   machine->Run();			// jump to the user progam
   ASSERT(false);			// machine->Run never returns;
                                         // the address space exits
@@ -344,7 +347,7 @@ void execThread(int arg) {
 //----------------------------------------------------------------------
 
 void execFile() {
-	argc = 0; // set number of args to 0 until we check
+  argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
   // get char * address from information at argv, then argv+1 etc.
@@ -363,35 +366,35 @@ void execFile() {
   }
   filename[127] = '\0';
 
-	// Get arguments from the kernel
-	char * argv[10] = {NULL};
-	char * tmp = new(std::nothrow) char[128];
-	int arg;
-	whence = machine->ReadRegister(5);
-	space->memManager->ReadMem(whence, 4, &arg, space);
-	int j = 0;
-	int size;
-	while(arg != 0) {
-		for ( int i = 0 ; i < 127 ; i++) {
-			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
-		}
-		tmp[127] = '\0';
-		size = sizeof(char) * (strlen(tmp)+1); // null terminator
-		argv[j] = new(std::nothrow) char[size];
-		strcpy(*(argv + j) , tmp);		
-		j++;		
-		whence += 4;
-		space->memManager->ReadMem(whence, 4, &arg, space);
-	}
-	for (int i  = 0 ; i < 10 ; i++) {
-		if( argv[i] == NULL) break;
-		args[i] = argv[i];
-		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
-	}
-	// set global data for prep
-	argc = j;
-
-	fprintf(stderr, "Attempting to open filename %s\n", filename);
+  // Get arguments from the kernel
+  char * argv[10] = {NULL};
+  char * tmp = new(std::nothrow) char[128];
+  int arg;
+  whence = machine->ReadRegister(5);
+  space->memManager->ReadMem(whence, 4, &arg, space);
+  int j = 0;
+  int size;
+  while(arg != 0) {
+    for ( int i = 0 ; i < 127 ; i++) {
+      if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
+    }
+    tmp[127] = '\0';
+    size = sizeof(char) * (strlen(tmp)+1); // null terminator
+    argv[j] = new(std::nothrow) char[size];
+    strcpy(*(argv + j) , tmp);		
+    j++;		
+    whence += 4;
+    space->memManager->ReadMem(whence, 4, &arg, space);
+  }
+  for (int i  = 0 ; i < 10 ; i++) {
+    if( argv[i] == NULL) break;
+    args[i] = argv[i];
+    fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
+  }
+  // set global data for prep
+  argc = j;
+  
+  fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
@@ -412,9 +415,9 @@ void execFile() {
   // put it in thread?
   //printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
+
+  argSpace = thread->space;
   
-	// If there were args, prep the stack here
-	argSpace = newSpace;
   thread->Fork(execThread, 0);
 
 	
