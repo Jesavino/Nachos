@@ -18,7 +18,7 @@ main(int argc, char **argv)
 
 	printd(argc, ConsoleOutput);
 	prints("\n ",ConsoleOutput);
-	prints(argv[i],ConsoleOutput);
+
   for (i=0; i<argc; i++) {
     prints("Arg[",ConsoleOutput);
     printd(i,ConsoleOutput);

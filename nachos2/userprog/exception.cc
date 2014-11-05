@@ -297,9 +297,9 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		for ( int j = 0; j < len ; j++) {
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
-			if(j == 0) argvAddr[i] = physAddr;
+			//if(j == 0) argvAddr[i] = physAddr;
 		}
-		
+		argvAddr[i] = sp;
 
 	}
 	// align SP
