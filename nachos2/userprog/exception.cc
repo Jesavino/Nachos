@@ -436,6 +436,10 @@ void execFile() {
 
 void exit() {
   int exitStatus = machine->ReadRegister(4);
+  if (exitStatus < 0) {
+    DEBUG('a', "Exit values need to be non-negative\n");
+    exitStatus = 1;
+  }
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
   procLock->Acquire();
