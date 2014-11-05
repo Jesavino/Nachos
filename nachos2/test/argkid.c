@@ -1,38 +1,32 @@
-/* argtest.c
+/* argkid.c
  *
- * Parent in simple argument test. Note that this
- * assumes the three-argument Exec(). The sharing
- * flag is set to zero.
+ * Kid in simple argument test.
  *
  */
 
 #include "syscall.h"
 
 int
-main()
+main(int argc, char **argv)
 {
+	
+  int i,j;
+  for (i=0; i<100000; i++) j++ ;
+	
+	prints("Here\n",ConsoleOutput);
+	prints("Argc: ",ConsoleOutput);
 
-  SpaceId kid;
-  int joinval;
-  char *args[3];
-
-  args[0] = "argkid";
-  args[1] = "argument1";
-  args[2] = (char *)0;
-
-  prints("PARENT exists\n", ConsoleOutput);
-  kid = Exec("argkid",args); /*Removed third arg for testing */
-  prints("PARENT after fork/exec; argkid pid is ", ConsoleOutput);
-  printd((int)kid, ConsoleOutput);
-  prints("\n", ConsoleOutput);
-
-  prints("PARENT about to Join argkid\n", ConsoleOutput);
-  joinval = Join(kid);
-  prints("PARENT off Join with value of ", ConsoleOutput);
-  printd(joinval, ConsoleOutput);
-  prints("\n", ConsoleOutput);
-
-  Halt();
+	printd(argc, ConsoleOutput);
+	prints("\n ",ConsoleOutput);
+	prints(argv[i],ConsoleOutput);
+  for (i=0; i<argc; i++) {
+    prints("Arg[",ConsoleOutput);
+    printd(i,ConsoleOutput);
+    prints("]=<",ConsoleOutput);
+    prints(argv[i],ConsoleOutput);
+    prints(">\n",ConsoleOutput);
+  }
+  Exit(17);
   /* not reached */
 }
 
