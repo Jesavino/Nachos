@@ -395,14 +395,6 @@ void execFile() {
   thread->Fork(execThread, 0);
   delete executable;			// close file
  	
-  currentThread->procInfo->setStatus(DONE);
-
-  currentThread->procInfo->setExitStatus(exitStatus);
-  currentThread->procInfo->WakeParent();
-  procLock->Release();
-  delete currentThread->space;
-  currentThread->Finish();
-  //what to do with error code.
 }
 
 /* Only return once the the user program "id" has finished.  
