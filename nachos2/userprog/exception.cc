@@ -40,7 +40,9 @@
 static const int numOpenFiles = 20;
 
 int pid = 1;
-
+int argc;
+char *args[10];
+AddrSpace *argSpace; // new space for args
 struct openFileDesc {
 	OpenFile *openFile = NULL;
 	int used;
@@ -277,11 +279,56 @@ void yieldProgram() {
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
+void prepStack(int argcount, char **argv, AddrSpace *space) {
+	int sp;
+	int len;
+	int argvAddr[argcount];
+	int physAddr;
+	char * tmp;
+	for(int i = 0 ; i < argcount ; i++)
+		fprintf(stderr, "Argv[%d] = %s\n", i, argv[i]);
+	sp = machine->ReadRegister(StackReg);
+	fprintf(stderr, "StackPointer = %d\n", sp);
+	for ( int i = 0 ; i < argcount ; i++) {
+		len = strlen(argv[i]) + 1;
+		sp -= len;
+		tmp = argv[i];
+		fprintf(stderr, "tmp is %s\n", tmp);
+		for ( int j = 0; j < len ; j++) {
+			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
+			machine->mainMemory[physAddr] = tmp[j];
+			if(j == 0) argvAddr[i] = physAddr;
+		}
+		
+
+	}
+	// align SP
+	sp = sp & ~3;
+
+	// Allocate and fill the argv array
+	sp -= sizeof(int) * argcount;
+
+	for ( int i = 0 ; i < argcount; i++ ) {
+		space->memManager->Translate(sp + i*4, &physAddr, 4, false, space);
+		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
+		/*
+		*(unsigned int *) &machine->mainMemory[sp + i*4]
+			= WordToMachine((unsigned int) argvAddr[i]);*/
+	}
+	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
+	machine->WriteRegister(4, argcount);
+	machine->WriteRegister(5, sp);
+
+	machine->WriteRegister(StackReg, sp - 8);
+
+}
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
   currentThread->space->RestoreState();		// load page table register
-  
+  if(argc) 
+		prepStack(argc, args, argSpace);
+
   machine->Run();			// jump to the user progam
   ASSERT(false);			// machine->Run never returns;
                                         // the address space exits
@@ -289,50 +336,15 @@ void execThread(int arg) {
 
 }
 
-void prepStack(int argc, char **argv, AddrSpace *space) {
-	int sp;
-	int len;
-	int argvAddr[argc];
-	int physAddr;
-	char * tmp;
-	sp = machine->ReadRegister(StackReg);
-	
-	for ( int i = 0 ; i < argc ; i++) {
-		len = strlen(argv[i]) + 1;
-		sp -= len;
-		tmp = argv[i];
-		for ( int j = 0; j < len ; j++) {
-			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
-			machine->mainMemory[physAddr] = tmp[j];
-		}
-		argvAddr[i] = sp;
-
-	}
-	// align SP
-	sp = sp & ~3;
-
-	// Allocate and fill the argv array
-	sp -= sizeof(int) * argc;
-
-	for ( int i = 0 ; i < argc; i++ ) {
-		space->memManager->Translate(sp + i*4, &physAddr, 1, false, space);
-		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
-	}
-	machine->WriteRegister(4, argc);
-	machine->WriteRegister(5, sp);
-
-	machine->WriteRegister(StackReg, sp - 8);
-
-}
-
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
 void execFile() {
+	argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
   // get char * address from information at argv, then argv+1 etc.
-  
+  AddrSpace *newSpace;
   AddrSpace *space = currentThread->space;
  
   int physAddr;
@@ -377,8 +389,11 @@ void execFile() {
 	}
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
+		args[i] = argv[i];
 		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
 	}
+	// set global data for prep
+	argc = j;
 
 	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
@@ -389,9 +404,9 @@ void execFile() {
     return;
   }
 
-  space = new(std::nothrow) AddrSpace(executable);    
+  newSpace = new(std::nothrow) AddrSpace(executable);    
   Thread * thread = new(std::nothrow) Thread("execed thread");
-  thread->space = space;
+  thread->space = newSpace;
   procLock->Acquire();
   thread->pid = pid++;
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
@@ -403,11 +418,10 @@ void execFile() {
   machine->WriteRegister(2, thread->pid);
   
 	// If there were args, prep the stack here
-	
-	if (j > 0)
-		prepStack(j ,argv, space);
-
+	argSpace = newSpace;
   thread->Fork(execThread, 0);
+
+	
   delete executable;			// close file
 
 
