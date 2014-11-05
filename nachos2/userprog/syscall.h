@@ -57,12 +57,10 @@ typedef int SpaceId;
 /* Run the executable, stored in the Nachos file "name", and return the 
  * address space identifier
  */
-
 #ifdef CHANGED
 /*SpaceId Exec(char *name);*/
 SpaceId Exec(char *name, char * args[]);
 #endif 
-
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
  */

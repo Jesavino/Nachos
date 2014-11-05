@@ -353,15 +353,7 @@ void execFile() {
  
   int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-
-  
 	// Address translation
-
-  /* Removing one to one mapping
-     for (int i = 0 ; i < 127 ; i++)
-     if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
-  */
-
   for ( int i = 0 ; i < 127 ; i++) {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       fprintf(stderr, "Invalid translate to exec'd file addr\n");
