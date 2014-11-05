@@ -24,7 +24,9 @@
 
 #define UserStackSize		1024 	// increase this as necessary!
 
+#ifdef CHANGED
 class MemoryManager;
+#endif
 
 class AddrSpace {
   public:
@@ -39,13 +41,12 @@ class AddrSpace {
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch
  
-	TranslationEntry* getPageTable(); 
 
 #ifdef CHANGED
+    TranslationEntry* getPageTable(); 
     AddrSpace Fork();
-	void PrintRegisters();
-	int NumPages;
-#endif
+    void PrintRegisters();
+    int NumPages;
 
 //  private:
 //#ifndef USE_TLB
@@ -53,7 +54,8 @@ class AddrSpace {
 //#endif					// for now!
     unsigned int numPages;		// Number of pages in the virtual 
 						// address space		
-	MemoryManager *memManager;
+    MemoryManager *memManager;
+#endif
 };
 
 #endif // ADDRSPACE_H

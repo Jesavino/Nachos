@@ -274,6 +274,9 @@ void yieldProgram() {
 }
 */
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
@@ -320,24 +323,36 @@ void prepStack(int argc, char **argv, AddrSpace *space) {
 
 	machine->WriteRegister(StackReg, sp - 8);
 
-
-
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execFile() {
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
+  // get char * address from information at argv, then argv+1 etc.
+  
   AddrSpace *space = currentThread->space;
+ 
   int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+
   
 	// Address translation
+
+  /* Removing one to one mapping
+     for (int i = 0 ; i < 127 ; i++)
+     if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
+  */
+
   for ( int i = 0 ; i < 127 ; i++) {
-		if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-			fprintf(stderr, "Invalid translate to exec'd file addr\n");
-			break;
-		}
-		if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
-	}
+    if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
+      fprintf(stderr, "Invalid translate to exec'd file addr\n");
+      break;
+    }
+    if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
+  }
   filename[127] = '\0';
 
 	// Get arguments from the kernel
@@ -394,12 +409,35 @@ void execFile() {
 
   thread->Fork(execThread, 0);
   delete executable;			// close file
- 	
+
+
+}  
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+void exit() {
+  int exitStatus = machine->ReadRegister(4);
+  DEBUG('s', "Exiting with status %d\n", exitStatus);
+  // set status in process to done
+  procLock->Acquire();
+
+  currentThread->procInfo->setStatus(DONE);
+
+  currentThread->procInfo->setExitStatus(exitStatus);
+  currentThread->procInfo->WakeParent();
+  procLock->Release();
+  delete currentThread->space;
+  currentThread->Finish();
+
 }
 
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
  */
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void joinProcess() {
   SpaceId joinId = machine->ReadRegister(4);
@@ -534,18 +572,19 @@ ExceptionHandler(ExceptionType which)
 	    }
 
 	  case SC_Exit:
-	    exit(1);
-	    //interrupt->Halt();
+	    exit();
 	    break;
+
 	  case SC_Exec:
 	    execFile();
 	    incrementPC();
 	    break;
+
 	  case SC_Join:
 	    joinProcess();
 	    incrementPC();
 	    break;
-	    interrupt->Halt();
+
 	    /*	  case SC_Fork:
 
 	    forkProgram();

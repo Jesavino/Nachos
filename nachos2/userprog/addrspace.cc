@@ -23,13 +23,13 @@
 
 #ifdef CHANGED
 BitMap * bitmap;
-#endif
 
 // Returns available physical address
 int
 getPhysPageNum() {
 	return bitmap->Find();
 }
+#endif
 
 //----------------------------------------------------------------------
 // SwapHeader
@@ -76,35 +76,36 @@ AddrSpace::AddrSpace(OpenFile *executable)
     unsigned int i;
 #endif
 	
-	if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
+    if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
-		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
-    	SwapHeader(&noffH);
+	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
+      SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
-
+    
 // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
-			+ UserStackSize;	// we need to increase the size
+      + UserStackSize;	// we need to increase the size
 						// to leave room for the stack
     numPages = divRoundUp(size, PageSize);
     size = numPages * PageSize;
-
-	ASSERT((unsigned int) bitmap->NumClear() >= numPages);
+    
+#ifdef CHANGED
+    ASSERT((unsigned int) bitmap->NumClear() >= numPages);
     //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
-
+#endif
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
 					numPages, size);
 #ifdef CHANGED
 
-	//NumPages = numPages; // set global access for TLB management
-	//memManager = new(std::nothrow) MemoryManager(machine);
+    //NumPages = numPages; // set global access for TLB management
+    //memManager = new(std::nothrow) MemoryManager(machine);
     int physAddr;
     memManager = new(std::nothrow) MemoryManager(machine);
-
+    
 //#ifndef USE_TLB
 // first, set up the translation 
     int physPage;
@@ -125,38 +126,37 @@ AddrSpace::AddrSpace(OpenFile *executable)
       bzero(machine->mainMemory + physAddr, PageSize);
 
     }
-//#endif
-	fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
-	    
-	
-	fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
-	if (noffH.code.size > 0) {
-		DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
-			noffH.code.virtualAddr, noffH.code.size);
-		char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
-		executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-		for (int j = 0; j < noffH.code.size; j++) {
-		  memManager->WriteMem(noffH.code.virtualAddr + j, 1, (int) buffer[j], this);
-		}
-		delete buffer;
-	}
-	fprintf(stderr, "\n****** Past Code Init ********\n");
-	fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
-	if (noffH.initData.size > 0) {
-		DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
-			noffH.initData.virtualAddr, noffH.initData.size);
-		char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
-
-		executable->ReadAt(buffer, noffH.initData.size, noffH.initData.inFileAddr);
-
-		for (int j = 0; j < noffH.initData.size; j++) {
-		  memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
-		}
-		delete buffer;
-	}	
-	fprintf(stderr, "All memeory pre-allocation done\n");
+    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
+    
+    
+    fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
+    if (noffH.code.size > 0) {
+      DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
+	    noffH.code.virtualAddr, noffH.code.size);
+      char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
+      executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
+      for (int j = 0; j < noffH.code.size; j++) {
+	memManager->WriteMem(noffH.code.virtualAddr + j, 1, (int) buffer[j], this);
+      }
+      delete buffer;
+    }
+    fprintf(stderr, "\n****** Past Code Init ********\n");
+    fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
+    if (noffH.initData.size > 0) {
+      DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
+	    noffH.initData.virtualAddr, noffH.initData.size);
+      char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
+      
+      executable->ReadAt(buffer, noffH.initData.size, noffH.initData.inFileAddr);
+      
+      for (int j = 0; j < noffH.initData.size; j++) {
+	memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
+      }
+      delete buffer;
+    }	
+    fprintf(stderr, "All memeory pre-allocation done\n");
 #endif
-
+    
 }
 
 //----------------------------------------------------------------------
@@ -171,8 +171,8 @@ AddrSpace::~AddrSpace()
     //printf("%d\n", pageTable[i].physicalPage);
     bitmap->Clear(pageTable[i].physicalPage);
   }
-#endif
-#ifndef USE_TLB
+  //#endif
+  //#ifndef USE_TLB
    delete pageTable;
 #endif
 }
@@ -209,6 +209,11 @@ AddrSpace::InitRegisters()
     DEBUG('a', "Initializing stack register to %d\n", numPages * PageSize - 16);
 	PrintRegisters();
 }
+
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void
 AddrSpace::PrintRegisters() {
   //int i;
@@ -226,11 +231,11 @@ AddrSpace::PrintRegisters() {
 
 void AddrSpace::SaveState() 
 {
-
+#ifdef CHANGED
   for (int i = 0; i < 4; i++) {
     machine->tlb[i].valid=0;
   }
-
+#endif
 }
 
 //----------------------------------------------------------------------
@@ -253,11 +258,10 @@ void AddrSpace::RestoreState()
 
 
 #ifdef CHANGED
-/*AddrSpace AddrSpace::Fork()
-{
 
-}
-*/
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 TranslationEntry*
 AddrSpace::getPageTable() {
 	return pageTable;
