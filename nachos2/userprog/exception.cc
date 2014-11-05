@@ -322,6 +322,10 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	machine->WriteRegister(StackReg, sp - 8);
 
 }
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
@@ -435,11 +439,23 @@ void exit() {
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
   procLock->Acquire();
+  ProcessInfo * child;
+  while ((child = currentThread->procInfo->GetChild()) != NULL ) {
+    if (child->GetStatus() == DONE) {
+      delete child;
+    }
+    else
+      child->setStatus(ZOMBIE);
+  }
+  if (currentThread->procInfo->GetStatus() == ZOMBIE) {
+    delete currentThread->procInfo;
+  }
+  else {
+    currentThread->procInfo->setStatus(DONE);
 
-  currentThread->procInfo->setStatus(DONE);
-
-  currentThread->procInfo->setExitStatus(exitStatus);
-  currentThread->procInfo->WakeParent();
+    currentThread->procInfo->setExitStatus(exitStatus);
+    currentThread->procInfo->WakeParent();
+  }
   procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
