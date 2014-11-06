@@ -1,29 +1,33 @@
-/* argkid.c
+/* deepexec.c
  *
- * Kid in simple argument test.
+ * Parent execs/joins kid that also execs/joins kid.
  *
  */
 
 #include "syscall.h"
 
 int
-main(int argc, char **argv)
+main()
 {
 
-  int i,j;
-  for (i=0; i<100000; i++) j++ ;
+  SpaceId kid;
+  int joinval;
 
-  for (i=0; i<argc; i++) {
-    prints("Arg[",ConsoleOutput);
-    printd(i,ConsoleOutput);
-    prints("]=<",ConsoleOutput);
-    prints(argv[i],ConsoleOutput);
-    prints(">\n",ConsoleOutput);
-  }
-  Exit(17);
+  prints("PARENT exists\n", ConsoleOutput);
+  kid = Exec("kid4", (char **)0, 0);
+  prints("PARENT after exec; kid pid is ", ConsoleOutput);
+  printd((int)kid, ConsoleOutput);
+  prints("\n", ConsoleOutput);
+
+  prints("PARENT about to Join kid\n", ConsoleOutput);
+  joinval = Join(kid);
+  prints("PARENT off Join with value of ", ConsoleOutput);
+  printd(joinval, ConsoleOutput);
+  prints("\n", ConsoleOutput);
+
+  Halt();
   /* not reached */
 }
-
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -40,7 +44,6 @@ OpenFileId file;
   Write(s, count, file);  
 
 }
-
 
 /* Print an integer "n" on open file descriptor "file". */
 
@@ -76,3 +79,4 @@ OpenFileId file;
   }
   Write(buffer,pos,file);
 }
+

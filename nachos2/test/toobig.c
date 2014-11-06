@@ -1,12 +1,26 @@
-/* parent.c
+/* toobig.c
  *
- * Parent in simple parent/child system.
+ * Parent forks off kid which is too big.
+ * Parent should survive.
+ * Kid shouldn't even start.
+ * The Exec() should return -1; and the
+ * -1 should be fed to Join().
+ *
+ * Clearly bad code, but nachos should
+ * do soemthing reasonable.
+ *
+ * Here's "reasonable" output:
+ *
+ *   PARENT exists
+ *   PARENT after exec; kid pid is -1
+ *   PARENT about to Join kid
+ *   PARENT off Join with value of -1
+ *   Parent finishing.
+ *   Machine halting!
  *
  */
 
 #include "syscall.h"
-
-#define NULL (void *)0
 
 int
 main()
@@ -16,7 +30,7 @@ main()
   int joinval;
 
   prints("PARENT exists\n", ConsoleOutput);
-  kid = Exec("kid", NULL, 0);
+  kid = Exec("kid6");
   prints("PARENT after exec; kid pid is ", ConsoleOutput);
   printd((int)kid, ConsoleOutput);
   prints("\n", ConsoleOutput);
@@ -25,7 +39,7 @@ main()
   joinval = Join(kid);
   prints("PARENT off Join with value of ", ConsoleOutput);
   printd(joinval, ConsoleOutput);
-  prints("\n", 1, ConsoleOutput);
+  prints("\nParent finishing.\n", ConsoleOutput);
 
   Halt();
   /* not reached */
@@ -46,6 +60,7 @@ OpenFileId file;
   Write(s, count, file);  
 
 }
+
 
 /* Print an integer "n" on open file descriptor "file". */
 

@@ -106,10 +106,9 @@ class Thread {
 #ifdef CHANGED
 	int getPriority() {return (priority);}
 	int pid;
-	int numOpenFiles;
 
 	// This is used so that Children can inherit access to shared files
-	BitMap *openFilesMap; 
+	BitMap *openFilesMap = NULL;
 #endif
   private:
     // some of the private data for this class is listed above

@@ -43,17 +43,14 @@ class AddrSpace {
  
 
 #ifdef CHANGED
-    TranslationEntry* getPageTable(); 
-    AddrSpace Fork();
-    void PrintRegisters();
+    TranslationEntry* getPageTable(); // in order to get access to the page table
+    AddrSpace Fork(); // to be implemented later
+    void PrintRegisters(); //just a function for debugging
     int NumPages;
 
-//  private:
-//#ifndef USE_TLB
-    TranslationEntry *pageTable;	// Assume linear page table translation
-//#endif					// for now!
+    TranslationEntry *pageTable;	// how we keep track of memory
     unsigned int numPages;		// Number of pages in the virtual 
-						// address space		
+															// address space		
     MemoryManager *memManager;
 #endif
 };
