@@ -35,7 +35,7 @@ INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
 all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec bogus2\
-	parent kid cat cp argtest argkid deepexec kid4 kid5
+	parent kid cat cp argtest argkid deepexec kid4 kid5 wideexec widekid1 widekid2 widekid3
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -161,4 +161,28 @@ cat.o: cat.c
 cat: cat.o start.o
 	$(LD) $(LDFLAGS) start.o cat.o -o cat.coff
 	../bin/coff2noff cat.coff cat
+
+wideexec.o: wideexec.c
+	$(CC) $(CFLAGS) -c wideexec.c
+wideexec: wideexec.o start.o
+	$(LD) $(LDFLAGS) start.o wideexec.o -o wideexec.coff
+	../bin/coff2noff wideexec.coff wideexec
+
+widekid1.o: widekid1.c
+	$(CC) $(CFLAGS) -c widekid1.c
+widekid1: widekid1.o start.o
+	$(LD) $(LDFLAGS) start.o widekid1.o -o widekid1.coff
+	../bin/coff2noff widekid1.coff widekid1
+
+widekid2.o: widekid2.c
+	$(CC) $(CFLAGS) -c widekid2.c
+widekid2: widekid2.o start.o
+	$(LD) $(LDFLAGS) start.o widekid2.o -o widekid2.coff
+	../bin/coff2noff widekid2.coff widekid2
+
+widekid3.o: widekid3.c
+	$(CC) $(CFLAGS) -c widekid3.c
+widekid3: widekid3.o start.o
+	$(LD) $(LDFLAGS) start.o widekid3.o -o widekid3.coff
+	../bin/coff2noff widekid3.coff widekid3
 
