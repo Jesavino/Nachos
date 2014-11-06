@@ -210,7 +210,6 @@ AddrSpace::InitRegisters()
    // accidentally reference off the end!
     machine->WriteRegister(StackReg, numPages * PageSize - 16);
     DEBUG('a', "Initializing stack register to %d\n", numPages * PageSize - 16);
-	PrintRegisters();
 }
 
 

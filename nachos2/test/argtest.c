@@ -21,7 +21,7 @@ main()
   args[2] = (char *)0;
 
   prints("PARENT exists\n", ConsoleOutput);
-  kid = Exec("argkid",args,0); /*removed a 0 from the third arg here to test*/
+  kid = Exec("argkid",args,0);
   prints("PARENT after fork/exec; argkid pid is ", ConsoleOutput);
   printd((int)kid, ConsoleOutput);
   prints("\n", ConsoleOutput);
@@ -32,7 +32,6 @@ main()
   printd(joinval, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
-  Exit(0);
   Halt();
   /* not reached */
 }

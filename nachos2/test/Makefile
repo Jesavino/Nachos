@@ -35,7 +35,7 @@ INCDIR =-I../userprog -I../threads
 CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
 all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec bogus2\
-	parent kid cat cp argtest argkid
+	parent kid cat cp argtest argkid deepexec kid4 kid5
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -47,6 +47,24 @@ argkid.o: argkid.c
 argkid: argkid.o start.o
 	$(LD) $(LDFLAGS) start.o argkid.o -o argkid.coff
 	../bin/coff2noff argkid.coff argkid
+
+deepexec.o: deepexec.c
+	$(CC) $(CFLAGS) -c deepexec.c
+deepexec: deepexec.o start.o
+	$(LD) $(LDFLAGS) start.o deepexec.o -o deepexec.coff
+	../bin/coff2noff deepexec.coff deepexec
+
+kid4.o: kid4.c
+	$(CC) $(CFLAGS) -c kid4.c
+kid4: kid4.o start.o
+	$(LD) $(LDFLAGS) start.o kid4.o -o kid4.coff
+	../bin/coff2noff kid4.coff kid4
+
+kid5.o: kid5.c
+	$(CC) $(CFLAGS) -c kid5.c
+kid5: kid5.o start.o
+	$(LD) $(LDFLAGS) start.o kid5.o -o kid5.coff
+	../bin/coff2noff kid5.coff kid5
 
 argtest.o: argtest.c
 	$(CC) $(CFLAGS) -c argtest.c
