@@ -24,7 +24,7 @@ main(argc, argv)
     input = Open(argv[i]);
     if (input == -1) {
       prints("cat: ", ConsoleOutput);
-      prints(argv[1], ConsoleOutput);
+      prints(argv[i], ConsoleOutput);
       prints(": No such file or directory\n", ConsoleOutput);
       Exit(1);
     }

@@ -53,6 +53,7 @@ main()
   printd(joinval1, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
+  Exit(0);
   Halt();
   /* not reached */
 }

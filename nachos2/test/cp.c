@@ -16,7 +16,7 @@ char *argv[];
 
   if (argc == 1) {
     prints("cp: ", ConsoleOutput);
-    prints(": Missing file operand\n", ConsoleOutput);
+    prints("Missing file operand\n", ConsoleOutput);
     
     Exit(1);
   }
@@ -30,7 +30,7 @@ char *argv[];
   }
   else if (argc > 3) {
     prints("cp: ", ConsoleOutput);
-    prints(": Too many arguments\n", ConsoleOutput);
+    prints("Too many arguments\n", ConsoleOutput);
 
   }
   if (strcmp(argv[1], argv[2]) == 0) {
@@ -52,13 +52,7 @@ char *argv[];
 
     Exit(2);
   }
-  if (input == -1) {
-    prints("cp: ", ConsoleOutput);
-    prints(argv[2], ConsoleOutput);
-    prints(": No such file or directory\n", ConsoleOutput);
 
-    Exit(2);
-  }
   numbytes = 0;
   
   while (Read(&c, 1, input) == 1){
