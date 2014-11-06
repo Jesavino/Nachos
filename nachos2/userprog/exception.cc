@@ -354,7 +354,7 @@ void execFile() {
   AddrSpace *space = currentThread->space;
  
   int physAddr;
-  fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
+  //  fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
@@ -398,7 +398,7 @@ void execFile() {
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
-    printf("Unable to open file %s\n", filename);
+    //    printf("Unable to open file %s\n", filename);
     machine->WriteRegister(2, -1);
     return;
   }
