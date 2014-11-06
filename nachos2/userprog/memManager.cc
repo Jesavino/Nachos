@@ -1,7 +1,12 @@
 #ifdef CHANGED
 
 #include "memManager.h"
-
+// -----------------------------------------------------------------------
+//
+// Constructor. Sets up the memory manager to reference the correct 
+// batch of mainMemory. 
+//
+// ----------------------------------------------------------------------
 MemoryManager::MemoryManager(Machine *sysMachine ) {
 
 	machine = sysMachine;
@@ -9,13 +14,17 @@ MemoryManager::MemoryManager(Machine *sysMachine ) {
 		physPageInfo[i] = 0;
 
 }
-
+// -------------------------------------------------------------------------
+//
+// Reads memory at virtual Addr addr. 
+// Returns: True if the memory was read correctly
+// 					False if an error occured
+//
+// 	-----------------------------------------------------------------------
 bool
 MemoryManager::ReadMem( int addr, int size, int *value, AddrSpace * space) {
-	
 	int data, result;
 	int physicalAddress;
-
 	DEBUG('a', "Reading from VA 0x%x, size %d\n", addr, size);
 
 	result = Translate(addr, &physicalAddress, size, false, space);
@@ -43,6 +52,13 @@ MemoryManager::ReadMem( int addr, int size, int *value, AddrSpace * space) {
 	return (true);
 
 }
+// ---------------------------------------------------------------------------
+//
+// Writes size bytes to VA addr fomr value. 
+// Returns: True if the write was successful
+// 					False if an error occured
+//
+// ---------------------------------------------------------------------------
 bool 
 MemoryManager::WriteMem( int addr, int size, int value, AddrSpace * space) {
 	int physicalAddress;
@@ -50,7 +66,6 @@ MemoryManager::WriteMem( int addr, int size, int value, AddrSpace * space) {
 	DEBUG('a', "Writing to VA 0x%x, size %d, value 0x%x\n", addr, size, value);
 
 	result = Translate(addr, &physicalAddress, size, true, space);
-
 	if(result == -1)
 		return false;
 	switch (size) {
@@ -74,7 +89,15 @@ MemoryManager::WriteMem( int addr, int size, int value, AddrSpace * space) {
 	return true;
 
 }
-
+// ------------------------------------------------------------------------------
+//
+// Tranlates VA virtAddr to the correct physical address. 
+// uses a pages reference map from the AddrSpace to find the correct physical 
+// page
+// Returns: -1 if an error occured
+// 					1 otherwise
+//
+// -------------------------------------------------------------------------------
 int 
 MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, AddrSpace * space) {
 	unsigned int i;
@@ -82,7 +105,6 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	TranslationEntry *entry;
 	unsigned int pageFrame;
 	TranslationEntry *pageTable;
-
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
 
 	// check for alignment errors
@@ -93,33 +115,13 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	// calculate the vpn and offset within the page from VA
 	vpn = (unsigned) virtAddr / PageSize;
 	offset = (unsigned) virtAddr % PageSize;
-	
-	/* THIS IS ALL CRAP FROM THE OLD TRANSLATE
-	if( machine->tlb == NULL)
-		fprintf(stderr, "Error, TLB is NULL!\n");
-	else {
-		for (entry = NULL, i = 0 ; i < TLBSize; i++)
-			if (tlb[i].valid && ((unsigned)tlb[i].virtualPage == vpn)) {
-				entry = &tlb[i];
-				break;
-			}
-		if (entry == NULL) {
-			// THIS IS WHAT WE NEED TO IMPLEMENT. YAY.
-		}	
-	}
-	
-	if (entry->readOnly && writing) {
-		DEBUG('a', "%d mapped read-only at %d in TLB!\n", virtAddr, i);
-		return -1;
-	}	
-	*/
-	
+		
 	// Get the address space from the current thread
 	pageTable = space->getPageTable();
 
 	// we have the VPN, should line up with ith physical page it has
 	if (pageTable == NULL) {
-		fprintf(stderr, "Page Table null\n");
+		//fprintf(stderr, "Page Table null\n");
 		return -1;
 	}
 	for (entry = NULL, i = 0 ; i < space->numPages ; i++) {
@@ -130,12 +132,10 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	}
 	if ( entry == NULL)
 		return -1;
-
 	if (entry->readOnly && writing) {
-		fprintf(stderr, "Attempting to write a read only file!!!\n");
+		//fprintf(stderr, "Attempting to write a read only file!!!\n");
 		return -1;
 	}
-
 	pageFrame = entry->physicalPage;
 
 	// if the pageFrame is too big, there is a problem. Something wrong 
