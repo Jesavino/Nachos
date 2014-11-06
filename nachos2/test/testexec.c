@@ -4,6 +4,6 @@ int
 main()
 {
 
-  SpaceId pid = Exec("test/hellocons", "Hello");
+  SpaceId pid = Exec("test/hellocons", (char *) 0, 0);
 
 }
