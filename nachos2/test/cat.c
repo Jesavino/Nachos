@@ -1,24 +1,23 @@
 /* hellocons.c
- *	Simple program to print string on console.
+ *	Simple program to echo input to console.
  *	Invoke as:
- *          userprog/nachos -x test/hellocons
- *      Should produce:
- *          Hello, console.
- *          Machine halting!
+ *      cat [filename]
  */
 
 #include "syscall.h"
 
 int
-main()
+main(argc, argv)
+     int argc;
+     char * argv[];
 {
-
-    char *s = "Hello, console.\n";
-    
-    prints(s, ConsoleOutput);
-    
-    Exit(0);
-    Halt();
+  OpenFileId input = Open(argv[1]);
+  char ch;
+  while (Read(&ch, 1, input) == 1){
+    Write(&ch, 1, ConsoleOutput);
+  }
+  
+  Exit(0);
     /* not reached */
 }
 
