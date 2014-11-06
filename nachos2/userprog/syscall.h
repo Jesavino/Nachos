@@ -60,7 +60,7 @@ typedef int SpaceId;
 
 #ifdef CHANGED
 /*SpaceId Exec(char *name);*/
-SpaceId Exec(char *name, char * args[]);
+SpaceId Exec(char *name, char * args[], int shareflag);
 #endif 
 
 /* Only return once the the user program "id" has finished.  

@@ -375,7 +375,7 @@ void execFile() {
 	space->memManager->ReadMem(whence, 4, &arg, space);
 	int j = 0;
 	int size;
-	while(arg != 0) {
+	while(arg != 0 && whence !=0)  {
 		for ( int i = 0 ; i < 127 ; i++) {
 			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
 		}
