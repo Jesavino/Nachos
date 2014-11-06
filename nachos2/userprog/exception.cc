@@ -97,7 +97,7 @@ void createNewFile() {
 	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
-			fprintf(stderr, "Bad Translation\n");
+			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
@@ -106,7 +106,8 @@ void createNewFile() {
 	stringarg[127] = '\0';
 		
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
-	  fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
+		return;
+	  //fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
 }
 //-------------------------------------------------------------------------------------------
@@ -130,7 +131,7 @@ void openFile() {
 	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
-			fprintf(stderr, "Bad Translation\n");
+			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
@@ -141,7 +142,7 @@ void openFile() {
 	// Open the file and make sure it opened properly
 	OpenFile *file = fileSystem->Open(stringarg);
 	if (file == NULL){
-		fprintf(stderr, "Error during file opening\n");
+		//fprintf(stderr, "Error during file opening\n");
 		machine->WriteRegister(2, -1);
 		return;
 	}
@@ -163,7 +164,7 @@ void openFile() {
 		}
 	}
 	if (fileId == -1) {
-		fprintf(stderr, "Too many files open\n");
+		//fprintf(stderr, "Too many files open\n");
 		machine->WriteRegister(2,-1);
 		return;
 	}
@@ -191,7 +192,7 @@ void writeFile() {
 	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-			fprintf(stderr, "Error in Write Translation\n");
+			//fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
@@ -206,14 +207,14 @@ void writeFile() {
 		machine->WriteRegister(2, size);
 	}
 	else if ( file == ConsoleInput ){
-		fprintf(stderr, "Cannot Write to StdInput\n");
+		//fprintf(stderr, "Cannot Write to StdInput\n");
 		machine->WriteRegister(2, -1);
 	}
 	else if (! currentThread->openFilesMap->Test(file) )
 		machine->WriteRegister(2, -1);
 	else {
 		if( !openFiles[file].used ){
-			fprintf(stderr, "Requested file has not been opened!\n");
+			//fprintf(stderr, "Requested file has not been opened!\n");
 			machine->WriteRegister(2, -1);
 			return;
 		}
@@ -237,7 +238,7 @@ void readFile() {
 	int file = machine->ReadRegister(6);
 	// make sure we are reading a file that COULD exist
 	if (file < 0 || file > NumOpenFiles) {
-		fprintf(stderr, "Invalid file read attempt\n");
+		//fprintf(stderr, "Invalid file read attempt\n");
 		machine->WriteRegister(2, -1);
 		return;
 	}
@@ -291,14 +292,18 @@ void closeFile() {
 	int file = machine->ReadRegister(4);
 
 	if (file == ConsoleInput)
-	  fprintf(stderr, "Cannot close Console Input\n");
+		return;
+	  //fprintf(stderr, "Cannot close Console Input\n");
 	else if (file == ConsoleOutput)
-	  fprintf(stderr, "Cannot close Console Output\n");
+		return;
+	  //fprintf(stderr, "Cannot close Console Output\n");
 	else {
 		if (!openFiles[file].used)
-		  		fprintf(stderr, "File not open to be closed!\n");
+			return;
+		  		//fprintf(stderr, "File not open to be closed!\n");
 		if ( ! currentThread->openFilesMap->Test(file)) {
-			fprintf(stderr, "Cannot Close a file you do not own\n");
+			return;
+			//fprintf(stderr, "Cannot Close a file you do not own\n");
 		}
 		// only delete the file from the list of open files if you are the last one using it
 		openFiles[file].refCount--;
@@ -306,6 +311,7 @@ void closeFile() {
 			openFiles[file].used = 0;
 			openFiles[file].name = NULL;
 			openFiles[file].openFile = NULL;
+			currentThread->openFilesMap->Clear(file);
 		}
 	}
 }
@@ -342,7 +348,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		len = strlen(argv[i]) + 1;
 		sp -= len;
 		tmp = argv[i];
-		fprintf(stderr, "tmp is %s\n", tmp);
+		//fprintf(stderr, "tmp is %s\n", tmp);
 		for ( int j = 0; j < len ; j++) {
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
@@ -447,7 +453,6 @@ void execFile() {
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
-    //    printf("Unable to open file %s\n", filename);
     machine->WriteRegister(2, -1);
     return;
   }
@@ -481,6 +486,38 @@ void execFile() {
 	
   delete executable;			// close file
 }  
+// ----------------------------------------------------------------------
+//
+// Closes / decrements the reference count of files. This is called
+// solely by exit in order to terminate all open files if the user
+// did not do so
+//
+// ----------------------------------------------------------------------
+void
+exitCloseFile(int i) {
+	
+	if (i == ConsoleInput)
+		return;
+	  //fprintf(stderr, "Cannot close Console Input\n");
+	else if (i == ConsoleOutput)
+		return;
+	  //fprintf(stderr, "Cannot close Console Output\n");
+	else {
+		if (!openFiles[i].used)
+			return;
+		  		//fprintf(stderr, "File not open to be closed!\n");
+
+		// only delete the file from the list of open files if you are the last one using it
+		openFiles[i].refCount--;
+		if ( (openFiles[i].refCount) == 0 ) {
+			openFiles[i].used = 0;
+			openFiles[i].name = NULL;
+			openFiles[i].openFile = NULL;
+			currentThread->openFilesMap->Clear(i);
+		}
+	}
+
+}
 
 // ----------------------------------------------------------------------
 //
@@ -498,6 +535,14 @@ void exit() {
   // set status in process to done
   procLock->Acquire();
   ProcessInfo * child;
+
+  // attempt to close all open files
+  for( int i = 0 ; i < NumOpenFiles ; i++) {
+    if (currentThread->openFilesMap->Test(i)){
+      exitCloseFile(i);
+    }
+    
+  }
   while ((child = currentThread->procInfo->GetChild()) != NULL ) {
     if (child->GetStatus() == DONE) {
       delete child;
@@ -510,14 +555,14 @@ void exit() {
   }
   else {
     currentThread->procInfo->setStatus(DONE);
-
+    
     currentThread->procInfo->setExitStatus(exitStatus);
     currentThread->procInfo->WakeParent();
   }
   procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
-
+  
 }
 
 /* Only return once the the user program "id" has finished.  
