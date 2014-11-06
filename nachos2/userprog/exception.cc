@@ -88,9 +88,9 @@ void createNewFile() {
 	// */
 	stringarg[127] = '\0';
 
-	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+	//fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
-		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
+	  fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
 	//fprintf(stderr, "File Creation Successful. Returning\n");
 }
@@ -123,7 +123,7 @@ void openFile() {
 	if (file == NULL)
 		fprintf(stderr, "Error during file opening\n");
 	//else 
-	//	fprintf(stderr, "File Opened Successfully. Returning\n");
+		fprintf(stderr, "File Opened Successfully. Returning\n");
 
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
@@ -205,7 +205,7 @@ void readFile() {
 		for( int i = 0 ; i < numBytes ; i++) {
 			readChar[i] = synchConsole->SynchGetChar();
 			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
-				fprintf(stderr, "Error writing to StdInput\n");
+			  //fprintf(stderr, "Error writing to StdInput\n");
 				break;
 			}
 		}
@@ -227,7 +227,7 @@ void readFile() {
 		int numRead = fileToRead->Read( buffer , numBytes );
 		for ( int i = 0 ; i < numBytes ; i++) {
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
-				fprintf(stderr, "Error reading from file in memory write\n");
+			  //fprintf(stderr, "Error reading from file in memory write\n");
 				break;
 			}
 		}
@@ -243,12 +243,12 @@ void closeFile() {
 	int file = machine->ReadRegister(4);
 
 	if (file == ConsoleInput)
-		fprintf(stderr, "Cannot close Console Input\n");
+	  fprintf(stderr, "Cannot close Console Input\n");
 	else if (file == ConsoleOutput)
-		fprintf(stderr, "Cannot close Console Output\n");
+	  fprintf(stderr, "Cannot close Console Output\n");
 	else {
 		if (!openFiles[file].used)
-			fprintf(stderr, "File not open to be closed!\n");
+		  		fprintf(stderr, "File not open to be closed!\n");
 		
 		// only delete the file from the list of open files if you are the last one using it
 		openFiles[file].refCount--;
@@ -315,7 +315,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		*(unsigned int *) &machine->mainMemory[sp + i*4]
 			= WordToMachine((unsigned int) argvAddr[i]);*/
 	}
-	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
+	//	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
 	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
 
@@ -358,7 +358,7 @@ void execFile() {
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-      fprintf(stderr, "Invalid translate to exec'd file addr\n");
+      //      fprintf(stderr, "Invalid translate to exec'd file addr\n");
       break;
     }
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
@@ -389,12 +389,12 @@ void execFile() {
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
 		args[i] = argv[i];
-		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
+		//		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
 	}
 	// set global data for prep
 	argc = j;
 
-	fprintf(stderr, "Attempting to open filename %s\n", filename);
+	//	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
