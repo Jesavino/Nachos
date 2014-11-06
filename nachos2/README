@@ -1,3 +1,77 @@
-implemented exec based on StartProcess();
+CSCI 444/544 Nachos Programming Assignment Number 2
 
-change section in addrspace constructor to support multiprogramming.
+Group Members: John Savino, Thom Matessich, John Cooper
+
+As of submission of this document, Exec has been implemented with three
+arguments. The first is the name of the binary to exec, and this is required. 
+On the other hand, in order to run with no arguments passed to the child program, 
+and without file sharing, argument two should be <(char **) 0> and argument three
+should just be 0. 
+
+Implementation:
+
+Memory translation has been implemented using a fairly straightforward process. 
+
+Address Space:
+	When an Address Space is constructed, it must be passed an executable. From this 
+executable, we determine how many physical pages of memory the executable will need. 
+Using a bitmap of page allocation accross the whole of physical memory, we assign a 
+mapping from virtual page to physical page, which is stored in a TranslationEntry object. 
+Each process running has one of the translation object, so on context switch, we just 
+make sure the system knows which lookup table to go to on TLB fault. 
+	Once a process has been assigned a set of physical pages, we go through and byte by 
+byte copy the information from the noff header file into the correct locations in 
+physical memory. 
+
+MemoryManager:
+	The Memory Manager does three things in our implementation. 
+	1) Allows for reading of a chunk of bytes starting from a VA. This is used occasionally, 
+		but not as much as the other two
+	2) Writing a chunk of bytes to a specific virtual address location. Both Read and Write mem 
+		go through and translate the VA to a physical address byte by byte and read or write 
+		directly from that location
+	3) Translate. This is the workhorse of the memory manager class. When we read an address
+		or write to an address as a result of any syscall, the translate function is used to make
+		sure we are reading or writing to the correct spot. This is typically called in a loop
+		off of the virtual address given to us as part of the syscall. Arguably, best design could 
+		indicate only using Read and Write mem, but we found for most situations, directly using 
+		translate did the job a lot better and with less overhead. 
+
+Proccess:
+	John I will leave this to you to write up
+
+Exec:
+
+	Standard exec with one argument:
+		We first get the name of the executable that has been reference by the parent process. 
+Once we have this executable, we create an address space and a thread for the process to be. 
+Information such as the process Id, and who the parent of the process is is recorded at this 
+time. Finally we fork the newly created thread off of our current thread. 
+
+	Getting arguments to the child:
+		In exec, we first check to see if there are arguments to be received, and if there are, we copy
+them into the positions of an array. As noted in the source, at this time we limit the number of 
+arguments (including the filename) to be passed in to TEN. Once we have the array of arguments (and 
+thus the number of arguments), it is just a matter of placing them on the stack where they need to go. 
+This is done similarly to the example shown in class. 
+
+	Filesharing:
+	Filesharing is a relatively simple addition to the other two arguments of exec. When a file is 
+opened, we mark on a per-process bitmap which of the 20 possible opened files was opened. When a process is 
+exec'd with a shareflag, we just copy the bitmap over to the child. When a process exits, if a child has not already
+closed a file, the files will all be closed. A reference count is kept inside our file descriptor array (more on this
+later), and a file is only truely closed if the process is the last process referencing it. 
+
+// These are just what I have no gotten to
+TODO:
+
+Read
+Write
+Open
+Close
+Exit
+Join
+Process management
+Shell implementation
+anything else...
+
