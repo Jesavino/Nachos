@@ -36,6 +36,7 @@ main()
     prints( s, myfile);
     prints("Past the Write()\n", ConsoleOutput);
     /* Will do an implicit close. */
+    Exit(0);
     Halt();
     /* not reached */
 }

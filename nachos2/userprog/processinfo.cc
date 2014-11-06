@@ -38,9 +38,10 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
   lock->Acquire();
 
   SpaceId first = -1;
-  SpaceId last;
+  SpaceId last = -1;
   ProcessInfo * child = (ProcessInfo *)children->Remove();
-  
+  first = child->GetPid();
+
   while (first != last) {
     if (childId == child->GetPid()) {
       break;
@@ -49,6 +50,13 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
     children->Append(child);
     child = (ProcessInfo *) children->Remove();
     last = child->GetPid();
+  }
+  
+  if (childId != child->GetPid()) {
+    lock->Release();
+    AddChild(child);
+    return -1;
+    // Children->Append(child);
   }
 
   child->lock->Acquire();
@@ -73,6 +81,13 @@ SpaceId ProcessInfo::GetPid() {
   int returnPid = pid;
 
   return returnPid;
+}
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+ProcessInfo * ProcessInfo::GetChild() {
+  return (ProcessInfo *) children->Remove();
 }
 
 //----------------------------------------------------------------------

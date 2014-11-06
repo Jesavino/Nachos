@@ -17,6 +17,7 @@ main()
     
     prints(s, ConsoleOutput);
 
+    Exit(0);
     Halt();
     /* not reached */
 }

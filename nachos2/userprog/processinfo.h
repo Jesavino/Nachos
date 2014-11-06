@@ -32,6 +32,7 @@ class ProcessInfo {
   void setStatus(int newStatus);
   void setExitStatus(int eStatus);
   void WakeParent();
+  ProcessInfo * GetChild();
 
   int GetPid();
   void AddChild(ProcessInfo *child);

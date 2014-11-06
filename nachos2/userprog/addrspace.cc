@@ -91,6 +91,9 @@ AddrSpace::AddrSpace(OpenFile *executable)
     size = numPages * PageSize;
     
 #ifdef CHANGED
+    // TODO
+    // need to get rid of the assert and make sure that 
+    // the system does not stop when we run a program that is too big.
     ASSERT((unsigned int) bitmap->NumClear() >= numPages);
     //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
@@ -126,10 +129,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
       bzero(machine->mainMemory + physAddr, PageSize);
 
     }
-    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
+    //    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
     
     
-    fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
+    //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
     if (noffH.code.size > 0) {
       DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
 	    noffH.code.virtualAddr, noffH.code.size);
@@ -140,8 +143,8 @@ AddrSpace::AddrSpace(OpenFile *executable)
       }
       delete buffer;
     }
-    fprintf(stderr, "\n****** Past Code Init ********\n");
-    fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
+    //    fprintf(stderr, "\n****** Past Code Init ********\n");
+    //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
     if (noffH.initData.size > 0) {
       DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
 	    noffH.initData.virtualAddr, noffH.initData.size);
@@ -154,7 +157,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
       }
       delete buffer;
     }	
-    fprintf(stderr, "All memeory pre-allocation done\n");
+    //fprintf(stderr, "All memeory pre-allocation done\n");
 #endif
     
 }
