@@ -14,10 +14,12 @@
 #include "addrspace.h"
 #include "synch.h"
 #include <new>
+
 #ifdef CHANGED
 #include "synchconsole.h"
 #include "processinfo.h"
 #endif
+
 //----------------------------------------------------------------------
 // StartProcess
 // 	Run a user program.  Open the executable, load it into

@@ -40,7 +40,9 @@
 static const int numOpenFiles = 20;
 
 int pid = 1;
-
+int argc;
+char *args[10];
+AddrSpace *argSpace; // new space for args
 struct openFileDesc {
 	OpenFile *openFile = NULL;
 	int used;
@@ -86,9 +88,9 @@ void createNewFile() {
 	// */
 	stringarg[127] = '\0';
 
-	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+	//fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
-		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
+	  fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
 	//fprintf(stderr, "File Creation Successful. Returning\n");
 }
@@ -121,7 +123,7 @@ void openFile() {
 	if (file == NULL)
 		fprintf(stderr, "Error during file opening\n");
 	//else 
-	//	fprintf(stderr, "File Opened Successfully. Returning\n");
+		fprintf(stderr, "File Opened Successfully. Returning\n");
 
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
@@ -203,7 +205,7 @@ void readFile() {
 		for( int i = 0 ; i < numBytes ; i++) {
 			readChar[i] = synchConsole->SynchGetChar();
 			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
-				fprintf(stderr, "Error writing to StdInput\n");
+			  //fprintf(stderr, "Error writing to StdInput\n");
 				break;
 			}
 		}
@@ -225,7 +227,7 @@ void readFile() {
 		int numRead = fileToRead->Read( buffer , numBytes );
 		for ( int i = 0 ; i < numBytes ; i++) {
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
-				fprintf(stderr, "Error reading from file in memory write\n");
+			  //fprintf(stderr, "Error reading from file in memory write\n");
 				break;
 			}
 		}
@@ -241,12 +243,12 @@ void closeFile() {
 	int file = machine->ReadRegister(4);
 
 	if (file == ConsoleInput)
-		fprintf(stderr, "Cannot close Console Input\n");
+	  fprintf(stderr, "Cannot close Console Input\n");
 	else if (file == ConsoleOutput)
-		fprintf(stderr, "Cannot close Console Output\n");
+	  fprintf(stderr, "Cannot close Console Output\n");
 	else {
 		if (!openFiles[file].used)
-			fprintf(stderr, "File not open to be closed!\n");
+		  		fprintf(stderr, "File not open to be closed!\n");
 		
 		// only delete the file from the list of open files if you are the last one using it
 		openFiles[file].refCount--;
@@ -274,10 +276,64 @@ void yieldProgram() {
 }
 */
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
+void prepStack(int argcount, char **argv, AddrSpace *space) {
+	int sp;
+	int len;
+	int argvAddr[argcount];
+	int physAddr;
+	char * tmp;
+	for(int i = 0 ; i < argcount ; i++)
+		fprintf(stderr, "Argv[%d] = %s\n", i, argv[i]);
+	sp = machine->ReadRegister(StackReg);
+	fprintf(stderr, "StackPointer = %d\n", sp);
+	for ( int i = 0 ; i < argcount ; i++) {
+		len = strlen(argv[i]) + 1;
+		sp -= len;
+		tmp = argv[i];
+		fprintf(stderr, "tmp is %s\n", tmp);
+		for ( int j = 0; j < len ; j++) {
+			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
+			machine->mainMemory[physAddr] = tmp[j];
+			//if(j == 0) argvAddr[i] = physAddr;
+		}
+		argvAddr[i] = sp;
+
+	}
+	// align SP
+	sp = sp & ~3;
+
+	// Allocate and fill the argv array
+	sp -= sizeof(int) * argcount;
+
+	for ( int i = 0 ; i < argcount; i++ ) {
+		space->memManager->Translate(sp + i*4, &physAddr, 4, false, space);
+		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
+		/*
+		*(unsigned int *) &machine->mainMemory[sp + i*4]
+			= WordToMachine((unsigned int) argvAddr[i]);*/
+	}
+	//	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
+	machine->WriteRegister(4, argc);
+	machine->WriteRegister(5, sp);
+
+	machine->WriteRegister(StackReg, sp - 8);
+
+}
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
   currentThread->space->RestoreState();		// load page table register
+
+  // If there were args, prep the stack here
+  if(argc) 
+    prepStack(argc, args, argSpace);
   
   machine->Run();			// jump to the user progam
   ASSERT(false);			// machine->Run never returns;
@@ -286,26 +342,59 @@ void execThread(int arg) {
 
 }
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void execFile() {
+  argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
+  // get char * address from information at argv, then argv+1 etc.
+  AddrSpace *newSpace;
   AddrSpace *space = currentThread->space;
+ 
   int physAddr;
   fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-  /* Removing one to one mapping
-  for (int i = 0 ; i < 127 ; i++)
-    if ((filename[i] = machine->mainMemory[whence++]) == '\0') break;
-*/
+	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
-		if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-			fprintf(stderr, "Invalid translate to exec'd file addr\n");
-			break;
-		}
-		if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
-	}
+    if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
+      //      fprintf(stderr, "Invalid translate to exec'd file addr\n");
+      break;
+    }
+    if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
+  }
   filename[127] = '\0';
-  
-  fprintf(stderr, "Attempting to open filename %s\n", filename);
+
+	// Get arguments from the kernel
+	char * argv[10] = {NULL};
+	char * tmp = new(std::nothrow) char[128];
+	int arg;
+	whence = machine->ReadRegister(5);
+	space->memManager->ReadMem(whence, 4, &arg, space);
+	int j = 0;
+	int size;
+	while(arg != 0 && whence !=0)  {
+	  space->memManager->Translate(arg, &arg, 1, false, space);
+	        for ( int i = 0 ; i < 127 ; i++) {
+			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
+		}
+		tmp[127] = '\0';
+		size = sizeof(char) * (strlen(tmp)+1); // null terminator
+		argv[j] = new(std::nothrow) char[size];
+		strcpy(*(argv + j) , tmp);		
+		j++;		
+		whence += 4;
+		space->memManager->ReadMem(whence, 4, &arg, space);
+	}
+	for (int i  = 0 ; i < 10 ; i++) {
+		if( argv[i] == NULL) break;
+		args[i] = argv[i];
+		//		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
+	}
+	// set global data for prep
+	argc = j;
+
+	//	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
@@ -314,9 +403,9 @@ void execFile() {
     return;
   }
 
-  space = new(std::nothrow) AddrSpace(executable);    
+  newSpace = new(std::nothrow) AddrSpace(executable);    
   Thread * thread = new(std::nothrow) Thread("execed thread");
-  thread->space = space;
+  thread->space = newSpace;
   procLock->Acquire();
   thread->pid = pid++;
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
@@ -326,32 +415,58 @@ void execFile() {
   // put it in thread?
   //printf("%d\n", thread->pid);
   machine->WriteRegister(2, thread->pid);
+
+  argSpace = thread->space;
   
   thread->Fork(execThread, 0);
+
+	
   delete executable;			// close file
-  
+
 
 }  
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+
 void exit() {
   int exitStatus = machine->ReadRegister(4);
+  if (exitStatus < 0) {
+    DEBUG('a', "Exit values need to be non-negative\n");
+    exitStatus = 1;
+  }
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
   procLock->Acquire();
+  ProcessInfo * child;
+  while ((child = currentThread->procInfo->GetChild()) != NULL ) {
+    if (child->GetStatus() == DONE) {
+      delete child;
+    }
+    else
+      child->setStatus(ZOMBIE);
+  }
+  if (currentThread->procInfo->GetStatus() == ZOMBIE) {
+    delete currentThread->procInfo;
+  }
+  else {
+    currentThread->procInfo->setStatus(DONE);
 
-  currentThread->procInfo->setStatus(DONE);
-
-  currentThread->procInfo->setExitStatus(exitStatus);
-  currentThread->procInfo->WakeParent();
+    currentThread->procInfo->setExitStatus(exitStatus);
+    currentThread->procInfo->WakeParent();
+  }
   procLock->Release();
   delete currentThread->space;
   currentThread->Finish();
-  //what to do with error code.
+
 }
 
 /* Only return once the the user program "id" has finished.  
  * Return the exit status.
  */
+
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
 
 void joinProcess() {
   SpaceId joinId = machine->ReadRegister(4);
@@ -487,17 +602,18 @@ ExceptionHandler(ExceptionType which)
 
 	  case SC_Exit:
 	    exit();
-	    //interrupt->Halt();
 	    break;
+
 	  case SC_Exec:
 	    execFile();
 	    incrementPC();
 	    break;
+
 	  case SC_Join:
 	    joinProcess();
 	    incrementPC();
 	    break;
-	    interrupt->Halt();
+
 	    /*	  case SC_Fork:
 
 	    forkProgram();

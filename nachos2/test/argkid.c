@@ -9,9 +9,15 @@
 int
 main(int argc, char **argv)
 {
-
+	
   int i,j;
   for (i=0; i<100000; i++) j++ ;
+	
+	prints("Here\n",ConsoleOutput);
+	prints("Argc: ",ConsoleOutput);
+
+	printd(argc, ConsoleOutput);
+	prints("\n ",ConsoleOutput);
 
   for (i=0; i<argc; i++) {
     prints("Arg[",ConsoleOutput);

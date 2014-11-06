@@ -14,7 +14,7 @@ main()
   int joinval;
 
   prints("PARENT exists\n", ConsoleOutput);
-  kid = Exec("kid");
+  kid = Exec("kid", (char *)0 ,0);
   prints("PARENT after exec; kid pid is ", ConsoleOutput);
   printd((int)kid, ConsoleOutput);
   prints("\n", ConsoleOutput);
@@ -24,7 +24,7 @@ main()
   prints("PARENT off Join with value of ", ConsoleOutput);
   printd(joinval, ConsoleOutput);
   prints("\n", 1, ConsoleOutput);
-
+  Exit(0);
   Halt();
   /* not reached */
 }
