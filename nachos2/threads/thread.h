@@ -105,7 +105,7 @@ class Thread {
 #ifdef CHANGED
 	int getPriority() {return (priority);}
 	int pid;
-
+	int numOpenFiles;
 #endif
   private:
     // some of the private data for this class is listed above

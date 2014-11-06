@@ -48,6 +48,7 @@ struct openFileDesc {
 	int used;
 	int refCount;
 	char * name;
+	int pidParent;
 }openFiles[numOpenFiles];
 
 char * stringarg;
@@ -72,11 +73,7 @@ void createNewFile() {
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 	AddrSpace *space = currentThread->space;
-	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-	/*  Old working version w/ 1to1 mem 
-	for (int i = 0 ; i < 127 ; i++) 
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	*/
+	
 	for ( int i = 0 ; i < 127 ; i++) {
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			fprintf(stderr, "Bad Translation\n");
@@ -85,14 +82,12 @@ void createNewFile() {
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
 		whence++;
 	}
-	// */
 	stringarg[127] = '\0';
 
-	fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
 		fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
-	//fprintf(stderr, "File Creation Successful. Returning\n");
+
 }
 // open a file
 void openFile() {
@@ -102,12 +97,6 @@ void openFile() {
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 
-	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-	/*
-	for (int i = 0 ; i < 127 ; i++)
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	stringarg[127] = '\0';
-	*/
 	for ( int i = 0 ; i < 127 ; i++ ) {
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			fprintf(stderr, "Bad Translation\n");
@@ -118,12 +107,9 @@ void openFile() {
 	}
 	stringarg[127] = '\0';
 
-	//fprintf(stderr, "Attempting to open filename %s\n", stringarg);
 	OpenFile *file = fileSystem->Open(stringarg);
 	if (file == NULL)
 		fprintf(stderr, "Error during file opening\n");
-	//else 
-	//	fprintf(stderr, "File Opened Successfully. Returning\n");
 
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
@@ -134,6 +120,8 @@ void openFile() {
 			openFiles[i].refCount++;
 			openFiles[i].name = stringarg;
 			openFiles[i].openFile = file;
+			openFiles[i].pidParent = currentThread->pid;
+			currentThread->numOpenFiles++;
 			fileId = i;
 			break;
 		}
@@ -154,9 +142,6 @@ void writeFile() {
 	whence = machine->ReadRegister(4);
 
 	stringarg = new(std::nothrow) char[size + 1];
-	//for (int i = 0 ; i < size ; i++)
-	//	if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
  	
 	for (int i = 0 ; i < size ; i++) {
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
@@ -170,7 +155,6 @@ void writeFile() {
 	int file = machine->ReadRegister(6);
 
 	// Here we will add writing to the console specifically
-	// 	if (console == NULL) console = new(std::nothrow)
 	if ( file == ConsoleOutput ) {
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
 		synchConsole->WriteLine(stringarg);
@@ -192,11 +176,10 @@ void readFile() {
 	DEBUG('a' , "Reading from File\n");
 	AddrSpace* space = currentThread->space;
 	int file = machine->ReadRegister(6);
-	if (file < 0 || file > 9) {
+	if (file < 0 || file > numOpenFiles) {
 		fprintf(stderr, "Invalid file read attempt\n");
 	}
 	int numBytes = machine->ReadRegister(5);
-	// in this case, whence is mainMemory address of buffer to read into
 	whence =  machine->ReadRegister(4);	
 
 	if (file == ConsoleInput) {
@@ -208,11 +191,7 @@ void readFile() {
 				fprintf(stderr, "Error writing to StdInput\n");
 				break;
 			}
-		}
-		//readChar[127] = '\0';
-		 
-		
-		//strcpy(&machine->mainMemory[whence] , readChar);
+		} 	
 		machine->WriteRegister(2, numBytes);
 	}
 	else if(!openFiles[file].used){
@@ -231,8 +210,6 @@ void readFile() {
 				break;
 			}
 		}
-		//int len = strlen(buffer);
-		//strcpy(&machine->mainMemory[whence] , buffer);
 		machine->WriteRegister(2 , numRead);
 	}
 }
@@ -408,6 +385,7 @@ void execFile() {
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = newSpace;
   procLock->Acquire();
+	thread->numOpenFiles = 0;
   thread->pid = pid++;
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
   currentThread->procInfo->AddChild(thread->procInfo);
