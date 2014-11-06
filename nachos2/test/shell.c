@@ -6,7 +6,7 @@ main()
     SpaceId newProc;
     OpenFileId input = ConsoleInput;
     OpenFileId output = ConsoleOutput;
-    char prompt[2], ch, buffer[60];
+    char prompt[2], ch, buffer[180];
     int i, j;
     char *argv[10];
 
@@ -19,27 +19,27 @@ main()
 
 	i = 0;
 	j = 0;
-	/*	do {
+	argv[j++] = &buffer[0];
+	do {
 	
 	    Read(&buffer[i], 1, input); 
+	    if (buffer[i] == ' ') {
+	      buffer[i] = '\0';
+	      argv[j++] = &buffer[i+1];
+	    }
 
 	} while( buffer[i++] != '\n' );
-	*/
 	
-	do {
-	  Read(&argv[i][j], 1, input);
-	  if (argv[i][j] == ' ') {
-	    argv[i++][j] == '\0';
-	    prints(&argv[i-1], output);
-	    j = 0;
-	  }
-	  
-	} while (argv[i][j++] != '\n');
-	argv[i++][--j] = '\0';
-	&argv[i] = (char *) 0;
+	
+	buffer[--i] = '\0';
+	argv[j] = (char *) 0;
+	for (j = 0; argv[j] != (char *) 0; j++) {
+	  prints(argv[j], output);
+	  prints("\n", output);
+	}
 
 	if( i > 0 ) {
-	  if ((newProc = Exec(&argv[0], &argv, 0)) == -1) {
+	  if ((newProc = Exec(argv[0], argv, 0)) == -1) {
 	    prints("Cannot Exec file\n", ConsoleOutput);
 	  }
 	  else {
