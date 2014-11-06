@@ -37,7 +37,7 @@
 //
 //----------------------------------------------------------------------
 
-static const int numOpenFiles = 20;
+static const int NumOpenFiles = 20;
 
 int pid = 1;
 int argc;
@@ -48,8 +48,7 @@ struct openFileDesc {
 	int used;
 	int refCount;
 	char * name;
-	int pidParent;
-}openFiles[numOpenFiles];
+}openFiles[NumOpenFiles];
 
 char * stringarg;
 int whence;
@@ -111,20 +110,20 @@ void openFile() {
 	if (file == NULL)
 		fprintf(stderr, "Error during file opening\n");
 
-	//fprintf(stderr, "File Opened Successfully. Returning\n");
+	if (currentThread->openFilesMap == NULL)
+		currentThread->openFilesMap = new(std::nothrow) BitMap(NumOpenFiles);
 
 	// We need to place the file in a Kernel accessable space?
 	// so we find the space to put the file. 
 	int fileId = -1;
-	for ( int i = 2 ; i < numOpenFiles ; i++) {
+	for ( int i = 2 ; i < NumOpenFiles ; i++) {
 		if (! openFiles[i].used ) {
 			openFiles[i].used = 1;
 			openFiles[i].refCount++;
 			openFiles[i].name = stringarg;
 			openFiles[i].openFile = file;
-			openFiles[i].pidParent = currentThread->pid;
-			currentThread->numOpenFiles++;
 			fileId = i;
+			currentThread->openFilesMap->Mark(i); //mark the file as opened by this parent
 			break;
 		}
 	}
@@ -162,8 +161,12 @@ void writeFile() {
 		synchConsole->WriteLine(stringarg);
 		
 	}
-	else if ( file == ConsoleInput )
+	else if ( file == ConsoleInput ){
 		fprintf(stderr, "Cannot Write to StdInput\n");
+		machine->WriteRegister(2, -1);
+	}
+	else if (! currentThread->openFilesMap->Test(file) )
+		machine->WriteRegister(2, -1);
 	else {
 		if( !openFiles[file].used )
 			fprintf(stderr, "Requested file has not been opened!\n");
@@ -178,7 +181,7 @@ void readFile() {
 	DEBUG('a' , "Reading from File\n");
 	AddrSpace* space = currentThread->space;
 	int file = machine->ReadRegister(6);
-	if (file < 0 || file > numOpenFiles) {
+	if (file < 0 || file > NumOpenFiles) {
 		fprintf(stderr, "Invalid file read attempt\n");
 	}
 	int numBytes = machine->ReadRegister(5);
@@ -198,6 +201,9 @@ void readFile() {
 	}
 	else if(!openFiles[file].used){
 		// error reading from closed or non-existing file
+		machine->WriteRegister(2, -1);
+	}
+	else if( !currentThread->openFilesMap->Test(file)) {
 		machine->WriteRegister(2, -1);
 	}
 	else {
@@ -228,7 +234,12 @@ void closeFile() {
 	else {
 		if (!openFiles[file].used)
 		  		fprintf(stderr, "File not open to be closed!\n");
-		
+		if ( ! currentThread->openFilesMap->Test(file)) {
+			fprintf(stderr, "Cannot Close a file you do not own\n");
+			machine->WriteRegister(2, -1);
+			return;
+		}
+
 		// only delete the file from the list of open files if you are the last one using it
 		openFiles[file].refCount--;
 		if ( (openFiles[file].refCount) == 0 ) {
@@ -386,11 +397,22 @@ void execFile() {
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = newSpace;
   procLock->Acquire();
-	thread->numOpenFiles = 0;
   thread->pid = pid++;
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
   currentThread->procInfo->AddChild(thread->procInfo);
   procLock->Release();
+
+	if (machine->ReadRegister(6)) {
+		BitMap *bitmapCopy = new(std::nothrow) BitMap(NumOpenFiles);
+		for (int i = 0 ; i < NumOpenFiles ; i++) {
+			if(currentThread->openFilesMap->Test(i)) {
+				bitmapCopy->Mark(i);
+				openFiles[i].refCount++;
+			}
+
+		}
+		thread->openFilesMap = bitmapCopy; // share all open files
+	}
   // calling thread given this threads pid.
   // put it in thread?
   //printf("%d\n", thread->pid);

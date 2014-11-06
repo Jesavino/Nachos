@@ -9,12 +9,22 @@
 int
 main()
 {
-
+	OpenFileId output, input;
   SpaceId kid;
   int joinval;
+	int count = 0;
+	char c;
 
   prints("PARENT exists\n", ConsoleOutput);
-  kid = Exec("kid", (char *)0 ,0);
+	Create("simple.output");
+	output = Open("simple.output");
+	input = Open("simple.input");
+
+  while ((Read(&c, 1, input) == 1) && ( count < 5)){
+      Write(&c, 1, output);
+			count++;
+  }
+  kid = Exec("kid", (char **)0 ,1);
   prints("PARENT after exec; kid pid is ", ConsoleOutput);
   printd((int)kid, ConsoleOutput);
   prints("\n", ConsoleOutput);
@@ -24,6 +34,9 @@ main()
   prints("PARENT off Join with value of ", ConsoleOutput);
   printd(joinval, ConsoleOutput);
   prints("\n", 1, ConsoleOutput);
+	Close(input);
+	Close(output);
+	prints("PARENT closed both files\n", ConsoleOutput);
   Exit(0);
   Halt();
   /* not reached */
