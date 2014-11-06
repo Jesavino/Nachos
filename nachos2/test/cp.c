@@ -13,26 +13,46 @@ char *argv[];
   OpenFileId input, output;
   char c;
   int numbytes;
-  if (argc != 3) {
+
+  if (argc == 1) {
+    prints("cp: ", ConsoleOutput);
+    prints(": Missing file operand\n", ConsoleOutput);
+    
+    Exit(1);
+  }
+  if (argc == 2) {
+    prints("cp: ", ConsoleOutput);
+    prints(": Missing destination file operand after ", ConsoleOutput);
+    prints(argv[1], ConsoleOutput);
+    prints("\n", ConsoleOutput);
+ 
     Exit(1);
   }
 
-  prints("here\n", ConsoleOutput);
   Create(argv[2]);
   output = Open(argv[2]);
   
   input = Open(argv[1]);
-  if (input == -1 || output == -1) {
+  if (input == -1) {
+    prints("cp: ", ConsoleOutput);
+    prints(argv[1], ConsoleOutput);
+    prints(": No such file or directory\n", ConsoleOutput);
+
     Exit(2);
   }
-  prints("here\n", ConsoleOutput);
+  if (input == -1) {
+    prints("cp: ", ConsoleOutput);
+    prints(argv[2], ConsoleOutput);
+    prints(": No such file or directory\n", ConsoleOutput);
+
+    Exit(2);
+  }
   numbytes = 0;
   
   while (Read(&c, 1, input) == 1){
     numbytes++;
     Write(&c, 1, output);
   }
-  prints("here\n", ConsoleOutput);
  
   Close(input);
   Close(output);

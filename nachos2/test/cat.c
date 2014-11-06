@@ -13,7 +13,14 @@ main(argc, argv)
 {
   OpenFileId input = Open(argv[1]);
   char ch;
-  while (Read(&ch, 1, input) == 1){
+  if (input == -1) {
+    prints("cat: ", ConsoleOutput);
+    prints(argv[1], ConsoleOutput);
+    prints(": No such file or directory\n", ConsoleOutput);
+    Exit(1);
+  }
+
+ while (Read(&ch, 1, input) == 1){
     Write(&ch, 1, ConsoleOutput);
   }
   
