@@ -11,19 +11,30 @@ main(argc, argv)
      int argc;
      char * argv[];
 {
-  OpenFileId input = Open(argv[1]);
+  OpenFileId input;
+  int i;
   char ch;
-  if (input == -1) {
-    prints("cat: ", ConsoleOutput);
-    prints(argv[1], ConsoleOutput);
-    prints(": No such file or directory\n", ConsoleOutput);
-    Exit(1);
-  }
-
- while (Read(&ch, 1, input) == 1){
-    Write(&ch, 1, ConsoleOutput);
-  }
   
+  if (argc == 1) {
+      prints("cat: ", ConsoleOutput);
+      prints(": No arguments\n", ConsoleOutput);
+      Exit(1);
+  }
+  for (i = 1; i < argc; i++) {
+    input = Open(argv[i]);
+    if (input == -1) {
+      prints("cat: ", ConsoleOutput);
+      prints(argv[1], ConsoleOutput);
+      prints(": No such file or directory\n", ConsoleOutput);
+      Exit(1);
+    }
+
+    
+    while (Read(&ch, 1, input) == 1){
+      Write(&ch, 1, ConsoleOutput);
+    }
+    Close(input);
+  }
   Exit(0);
     /* not reached */
 }
