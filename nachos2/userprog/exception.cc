@@ -539,11 +539,12 @@ void exit() {
   ProcessInfo * child;
 
 	// attempt to close all open files
-	for( int i = 0 ; i < NumOpenFiles ; i++) {
-		if (currentThread->openFilesMap->Test(i)){
-			exitCloseFile(i);
-		}
-
+	if (currentThread->openFilesMap != NULL) {
+		for( int i =  2; i < NumOpenFiles ; i++) {
+			if (currentThread->openFilesMap->Test(i)){
+				exitCloseFile(i);
+			}
+		}	
 	}
   while ((child = currentThread->procInfo->GetChild()) != NULL ) {
     if (child->GetStatus() == DONE) {
