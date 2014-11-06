@@ -37,22 +37,36 @@
 //
 //----------------------------------------------------------------------
 
-static const int numOpenFiles = 20;
+// Specify the max number of files that can be opened
+static const int NumOpenFiles = 20;
 
+// Global Process ID
 int pid = 1;
+
+// Globals to be set if there are arguments to exec 
+// The size of Args can change if more than 10 args will be passed
+// argSpace is access to the newly created addrSpace for arguments
 int argc;
 char *args[10];
 AddrSpace *argSpace; // new space for args
+
+// This struct manages info about open files. Each file is indexed 
+// in an array so we can access them at any time
 struct openFileDesc {
 	OpenFile *openFile = NULL;
 	int used;
 	int refCount;
 	char * name;
-}openFiles[numOpenFiles];
+}openFiles[NumOpenFiles];
 
+// Some address and string globals really only used per syscall
 char * stringarg;
 int whence;
+
+// The SynchConsole acts as a wrapper around the Console Singleton
 SynchConsole *synchConsole;
+
+// Lock to ensure mutex throughout access to process data
 Lock * procLock = new(std::nothrow) Lock("global process lock");
 
 // Increments the program counters
@@ -65,18 +79,22 @@ void incrementPC() {
 	pc += 4;
 	machine->WriteRegister(NextPCReg, pc);
 }
-// create a new file
+//-----------------------------------------------------------------------------
+// 
+// Called via the Create() Syscall. Assumes the filename is the only argument
+// Will print out info if the creation failed, but otherwise no return value 
+// is specified.
+// LIMIT: Filenames can be at most 127 characters plus the null terminator
+//
+// ----------------------------------------------------------------------------
 void createNewFile() {
 	int physAddr;
 	DEBUG('a', "Creating a new file.\n");
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 	AddrSpace *space = currentThread->space;
-	fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-	/*  Old working version w/ 1to1 mem 
-	for (int i = 0 ; i < 127 ; i++) 
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	*/
+	
+	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			fprintf(stderr, "Bad Translation\n");
@@ -85,16 +103,23 @@ void createNewFile() {
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
 		whence++;
 	}
-	// */
 	stringarg[127] = '\0';
-
-	//fprintf(stderr, "File creation attempt on filename %s\n" , stringarg);
+		
 	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
 	  fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
 
-	//fprintf(stderr, "File Creation Successful. Returning\n");
 }
-// open a file
+//-------------------------------------------------------------------------------------------
+//
+// Called as a result of the Open() syscall. When the file is opened, the handler finds an 
+// empty slot in the array of open file storage. In addition, it updates the bitmap of the 
+// current process to indicate which files the currentThread has open. This is utilizaed only 
+// for file sharing between exec'd processes
+// LIMIT: Again, file names can only be 127 chars plus the null byte
+// Returns: -1 on error
+// 					An OpenFileId otherwise
+//
+// -------------------------------------------------------------------------------------------					
 void openFile() {
 	int physAddr;
 	AddrSpace *space = currentThread->space;
@@ -102,12 +127,7 @@ void openFile() {
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 
-	//fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
-	/*
-	for (int i = 0 ; i < 127 ; i++)
-		if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	stringarg[127] = '\0';
-	*/
+	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			fprintf(stderr, "Bad Translation\n");
@@ -118,33 +138,47 @@ void openFile() {
 	}
 	stringarg[127] = '\0';
 
-	//fprintf(stderr, "Attempting to open filename %s\n", stringarg);
+	// Open the file and make sure it opened properly
 	OpenFile *file = fileSystem->Open(stringarg);
-	if (file == NULL)
+	if (file == NULL){
 		fprintf(stderr, "Error during file opening\n");
-	//else 
-		fprintf(stderr, "File Opened Successfully. Returning\n");
+		machine->WriteRegister(2, -1);
+		return;
+	}
+	// init the bitmap if it has not been done already
+	if (currentThread->openFilesMap == NULL)
+		currentThread->openFilesMap = new(std::nothrow) BitMap(NumOpenFiles);
 
-	// We need to place the file in a Kernel accessable space?
-	// so we find the space to put the file. 
+	// Find a place for the file
 	int fileId = -1;
-	for ( int i = 2 ; i < numOpenFiles ; i++) {
+	for ( int i = 2 ; i < NumOpenFiles ; i++) {
 		if (! openFiles[i].used ) {
 			openFiles[i].used = 1;
 			openFiles[i].refCount++;
 			openFiles[i].name = stringarg;
 			openFiles[i].openFile = file;
 			fileId = i;
+			currentThread->openFilesMap->Mark(i); //mark the file as opened by this parent
 			break;
 		}
 	}
-	if (fileId == -1)
+	if (fileId == -1) {
 		fprintf(stderr, "Too many files open\n");
+		machine->WriteRegister(2,-1);
+		return;
+	}
 	else
 		machine->WriteRegister(2, fileId);
-
 }
-// write to the specified file
+//-----------------------------------------------------------------------------------------
+//
+// Writes a specified number of bytes to an already open file. If the file specified is
+// ConsoleOutput, the number of bytes is instead written to the console
+// LIMIT: Same file limitations as open and create
+// Returns: -1 on error
+// 					The number of bytes written otherwise
+//
+// ----------------------------------------------------------------------------------------					
 void writeFile() {
 	int physAddr;
 	AddrSpace *space = currentThread->space;
@@ -152,12 +186,9 @@ void writeFile() {
 	
 	int size = machine->ReadRegister(5);
 	whence = machine->ReadRegister(4);
-
 	stringarg = new(std::nothrow) char[size + 1];
-	//for (int i = 0 ; i < size ; i++)
-	//	if ((stringarg[i] = machine->mainMemory[whence++]) == '\0') break;
-	//fprintf(stderr, "Attempting to write string %s to file\n" , stringarg);
  	
+	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			fprintf(stderr, "Error in Write Translation\n");
@@ -165,38 +196,52 @@ void writeFile() {
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 	}
-
 	stringarg[size] = '\0';
-	int file = machine->ReadRegister(6);
 
-	// Here we will add writing to the console specifically
-	// 	if (console == NULL) console = new(std::nothrow)
+	int file = machine->ReadRegister(6);
+	// If the file specified is the console
 	if ( file == ConsoleOutput ) {
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
 		synchConsole->WriteLine(stringarg);
-		
+		machine->WriteRegister(2, size);
 	}
-	else if ( file == ConsoleInput )
+	else if ( file == ConsoleInput ){
 		fprintf(stderr, "Cannot Write to StdInput\n");
+		machine->WriteRegister(2, -1);
+	}
+	else if (! currentThread->openFilesMap->Test(file) )
+		machine->WriteRegister(2, -1);
 	else {
-		if( !openFiles[file].used )
+		if( !openFiles[file].used ){
 			fprintf(stderr, "Requested file has not been opened!\n");
+			machine->WriteRegister(2, -1);
+			return;
+		}
 		OpenFile *fileToWrite = openFiles[file].openFile;
 		int numWrite = fileToWrite->Write( stringarg, size);
 		machine->WriteRegister(2, numWrite);
-
 	}	
 }
-// read from the specified file
+//-----------------------------------------------------------------------------------------
+//
+// Reads a specified number of bytes from a specified file. If ConsoleInput is specified, 
+// it attempts to read from there. 
+// LIMIT: Can only read at most 128 bytes from the console at a time
+// Returns: -1 if an error occured
+// 					the number of bytes read otherwise
+//
+// -----------------------------------------------------------------------------------------
 void readFile() {
 	DEBUG('a' , "Reading from File\n");
 	AddrSpace* space = currentThread->space;
 	int file = machine->ReadRegister(6);
-	if (file < 0 || file > 9) {
+	// make sure we are reading a file that COULD exist
+	if (file < 0 || file > NumOpenFiles) {
 		fprintf(stderr, "Invalid file read attempt\n");
+		machine->WriteRegister(2, -1);
+		return;
 	}
 	int numBytes = machine->ReadRegister(5);
-	// in this case, whence is mainMemory address of buffer to read into
 	whence =  machine->ReadRegister(4);	
 
 	if (file == ConsoleInput) {
@@ -205,38 +250,41 @@ void readFile() {
 		for( int i = 0 ; i < numBytes ; i++) {
 			readChar[i] = synchConsole->SynchGetChar();
 			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
-			  //fprintf(stderr, "Error writing to StdInput\n");
-				break;
+			  machine->WriteRegister(2, -1);
+				return;
 			}
-		}
-		//readChar[127] = '\0';
-		 
-		
-		//strcpy(&machine->mainMemory[whence] , readChar);
+		} 	
 		machine->WriteRegister(2, numBytes);
 	}
 	else if(!openFiles[file].used){
 		// error reading from closed or non-existing file
 		machine->WriteRegister(2, -1);
 	}
+	else if( !currentThread->openFilesMap->Test(file)) {
+		machine->WriteRegister(2, -1);
+	}
 	else {
-	
 		char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 		OpenFile *fileToRead = openFiles[file].openFile;
-
 		int numRead = fileToRead->Read( buffer , numBytes );
 		for ( int i = 0 ; i < numBytes ; i++) {
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
-			  //fprintf(stderr, "Error reading from file in memory write\n");
-				break;
+			  machine->WriteRegister(2,-1);
+				return;
 			}
 		}
-		//int len = strlen(buffer);
-		//strcpy(&machine->mainMemory[whence] , buffer);
 		machine->WriteRegister(2 , numRead);
 	}
 }
-// close the file
+// ------------------------------------------------------------------------------------
+//
+// Closes the specified file. Checks to make sure that nobody else is using the same 
+// file before it is close. By convetion, if a parent execs a kid with shared file 
+// access, the kid MUST close the file(s) before exiting.
+// Limit: none
+// Returns: nothing
+//
+// -------------------------------------------------------------------------------------
 void closeFile() {
 	DEBUG('a', "Closing the file\n");
 
@@ -249,7 +297,9 @@ void closeFile() {
 	else {
 		if (!openFiles[file].used)
 		  		fprintf(stderr, "File not open to be closed!\n");
-		
+		if ( ! currentThread->openFilesMap->Test(file)) {
+			fprintf(stderr, "Cannot Close a file you do not own\n");
+		}
 		// only delete the file from the list of open files if you are the last one using it
 		openFiles[file].refCount--;
 		if ( (openFiles[file].refCount) == 0 ) {
@@ -258,7 +308,6 @@ void closeFile() {
 			openFiles[file].openFile = NULL;
 		}
 	}
-
 }
 
 /*void forkProgram() {
@@ -276,19 +325,19 @@ void yieldProgram() {
 }
 */
 
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-
+// --------------------------------------------------------------------------------
+//
+// Preps the stack with user arguments. This is only called if there are arguments 
+// with which to prep the stack
+// 
+// -------------------------------------------------------------------------------
 void prepStack(int argcount, char **argv, AddrSpace *space) {
 	int sp;
 	int len;
 	int argvAddr[argcount];
 	int physAddr;
 	char * tmp;
-	for(int i = 0 ; i < argcount ; i++)
-		fprintf(stderr, "Argv[%d] = %s\n", i, argv[i]);
 	sp = machine->ReadRegister(StackReg);
-	fprintf(stderr, "StackPointer = %d\n", sp);
 	for ( int i = 0 ; i < argcount ; i++) {
 		len = strlen(argv[i]) + 1;
 		sp -= len;
@@ -297,7 +346,6 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		for ( int j = 0; j < len ; j++) {
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
-			//if(j == 0) argvAddr[i] = physAddr;
 		}
 		argvAddr[i] = sp;
 
@@ -311,21 +359,19 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	for ( int i = 0 ; i < argcount; i++ ) {
 		space->memManager->Translate(sp + i*4, &physAddr, 4, false, space);
 		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
-		/*
-		*(unsigned int *) &machine->mainMemory[sp + i*4]
-			= WordToMachine((unsigned int) argvAddr[i]);*/
 	}
-	//	fprintf(stderr, "Argc is %d SP is %d\n", argcount, sp);
+	// Fill reg 4 with number of arguments and reg 5 with address of first argument
 	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
-
 	machine->WriteRegister(StackReg, sp - 8);
-
 }
 
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-
+// ----------------------------------------------------------------------
+// 
+// Called to prepare the registers and stack after a thread has been 
+// created. This eventually called machine->Run() on the exec'd thread
+//
+// ---------------------------------------------------------------------
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
@@ -342,9 +388,16 @@ void execThread(int arg) {
 
 }
 
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-
+// -------------------------------------------------------------------------
+// 
+// Called as a result of the Exec() syscall. Functions expecting three 
+// arguments, the name of the binary to exec to, an array of arguments to 
+// send to the child, and a flag to determine if files should be shared 
+// between parent and child. 
+// Returns: -1 on error
+// 					PID of kid otherwise
+//
+// -------------------------------------------------------------------------
 void execFile() {
   argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
@@ -352,14 +405,12 @@ void execFile() {
   // get char * address from information at argv, then argv+1 etc.
   AddrSpace *newSpace;
   AddrSpace *space = currentThread->space;
- 
   int physAddr;
-  //  fprintf(stderr, "File name begins at address %d in user VAS\n" , whence);
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-      //      fprintf(stderr, "Invalid translate to exec'd file addr\n");
-      break;
+      machine->WriteRegister(2,-1);
+			return;
     }
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
@@ -375,7 +426,7 @@ void execFile() {
 	int size;
 	while(arg != 0 && whence !=0)  {
 	  space->memManager->Translate(arg, &arg, 1, false, space);
-	        for ( int i = 0 ; i < 127 ; i++) {
+	  for ( int i = 0 ; i < 127 ; i++) {
 			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
 		}
 		tmp[127] = '\0';
@@ -389,12 +440,10 @@ void execFile() {
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
 		args[i] = argv[i];
-		//		fprintf(stderr, "Argv[%d] is %s\n", i, argv[i]);
 	}
 	// set global data for prep
 	argc = j;
 
-	//	fprintf(stderr, "Attempting to open filename %s\n", filename);
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
@@ -411,24 +460,34 @@ void execFile() {
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
   currentThread->procInfo->AddChild(thread->procInfo);
   procLock->Release();
-  // calling thread given this threads pid.
-  // put it in thread?
-  //printf("%d\n", thread->pid);
+
+	// if files are to be shared, make sure the new threads bitmap matches that of 
+	// the old thread
+	if (machine->ReadRegister(6)) {
+		BitMap *bitmapCopy = new(std::nothrow) BitMap(NumOpenFiles);
+		for (int i = 0 ; i < NumOpenFiles ; i++) {
+			if(currentThread->openFilesMap->Test(i)) {
+				bitmapCopy->Mark(i);
+				openFiles[i].refCount++;
+			}
+		}
+		thread->openFilesMap = bitmapCopy; // share all open files
+	}
+
+  // calling thread given this threads pid
   machine->WriteRegister(2, thread->pid);
-
   argSpace = thread->space;
-  
   thread->Fork(execThread, 0);
-
 	
   delete executable;			// close file
-
-
 }  
 
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
-
+// ----------------------------------------------------------------------
+//
+// Called as result of the exit syscall. Returns the exit status that 
+// is passed in. Kills the thread that called exit. 
+//
+// ----------------------------------------------------------------------
 void exit() {
   int exitStatus = machine->ReadRegister(4);
   if (exitStatus < 0) {
