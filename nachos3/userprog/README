@@ -1,0 +1,203 @@
+CSCI 444/544 Nachos Programming Assignment Number 2
+
+Group Members: John Savino, Thom Matessich, John Cooper
+
+As of submission of this document, Exec has been implemented with three
+arguments. The first is the name of the binary to exec, and this is required. 
+On the other hand, in order to run with no arguments passed to the child program, 
+and without file sharing, argument two should be <(char *) 0> and argument three
+should just be 0. 
+
+How to run: 
+       All user-level programs should work according to specs. They are run from the test/ directory with
+       ../userprog/nachos -x <program>
+
+       In some cases, when a program exits with Exit(), CTRL-C may be require to get back to the linux console. 
+
+       When programs are run from the shell, the Halt() system call is the only thing that a user can do that 
+       terminates the shell. Leaving a space at the end of the line can result in an extra, empty, argument 
+       getting passed to the child. This is detailed below in the shell.c section.
+
+Known Problems:
+       In addition to above, the shell program, when run, requires 19 pages of memory. This does not leave much
+       room for testing anything but the simplest programs when running from the shell. For comparison, the 
+       halt program requires 10 pages. We figure that this is known by the professor, but is 
+       included for completeness.
+
+
+Implementation:
+
+Memory translation has been implemented using a fairly straightforward process. 
+
+Address Space:
+	When an Address Space is constructed, it must be passed an executable. From this 
+	executable, we determine how many physical pages of memory the executable will need. 
+	Using a bitmap of page allocation accross the whole of physical memory, we assign a 
+	mapping from virtual page to physical page, which is stored in a TranslationEntry object. 
+	Each process running has one of the translation object, so on context switch, we just 
+	make sure the system knows which lookup table to go to on TLB fault. 
+
+	Once a process has been assigned a set of physical pages, we go through and byte by 
+	byte copy the information from the noff header file into the correct locations in 
+	physical memory. 
+	 
+	Each AddressSpace has been augmented with a fail flag, which can be set in the 
+	constructor on either a memory allocation failure or a bad executable detection.
+	This flag is then checked by the function calling the constructor(Exec() system call)
+	and when it detects the failure, exec gets rid of any information about the process and
+	returns a -1. 
+
+MemoryManager:
+	The Memory Manager does three things in our implementation. 
+	1) Allows for reading of a chunk of bytes starting from a VA. This is used occasionally, 
+		but not as much as the other two
+	2) Writing a chunk of bytes to a specific virtual address location. Both Read and Write mem 
+		go through and translate the VA to a physical address byte by byte and read or write 
+		directly from that location
+	3) Translate. This is the workhorse of the memory manager class. When we read an address
+		or write to an address as a result of any syscall, the translate function is used to make
+		sure we are reading or writing to the correct spot. This is typically called in a loop
+		off of the virtual address given to us as part of the syscall. Arguably, best design could 
+		indicate only using Read and Write mem, but we found for most situations, directly using 
+		translate did the job a lot better and with less overhead. 
+
+ProcessInfo:
+	To handle the Exit() and Join() system calls, we have created a new class ProcessInfo. 
+	Each thread is given its own copy of ProcessInfo (with status set to RUNNING), 
+	which stores its process id, its exit status, its current status (RUNNING or DONE or ZOMBIE), 
+	and a list of its children. When a process exits, its exit status is assigned from the 
+	argument to the syscall, and its status is set to DONE. 
+	
+	Each child's ProcessInfo lives for as long as its parent is running. The parent is thus
+	responsible for deleting a child's ProcessInfo when the child is joined. 
+	Also, the parent deletes any remaining, unjoined child ProcessInfos when the parent exits,
+	because only the immediate parent needs to join any children. If any child process is still
+	running when the parent exits, the child status is set to ZOMBIE (in breaking from unix/linux 
+	terminology, ZOMBIE here means without parent) and then the child deletes its own ProcessInfo 
+	when it exits. 
+
+	Many of the methods in the ProcessInfo class ensure mutex (especially the set methods).
+	It might be overkill, but better safe than sorry.
+
+Exec:
+	Exec() is responsible for thread creation. Its basic functionality is  similar to the StartProcess() 
+	function in nachos with differences detailed below. 
+
+	Standard exec with one argument:
+		We first get the name of the executable that has been reference by the parent process. 
+Once we have this executable, we create an address space and a thread for the process to be. 
+Information such as the process Id, and who the parent of the process is is recorded at this 
+time. Finally we fork the newly created thread off of our current thread. 
+
+	Getting arguments to the child:
+		In exec, we first check to see if there are arguments to be received, and if there are, we copy
+them into the positions of an array. As noted in the source, at this time we limit the number of 
+arguments (including the filename) to be passed in to TEN. Once we have the array of arguments (and 
+thus the number of arguments), it is just a matter of placing them on the stack where they need to go. 
+This is done similarly to the example shown in class. 
+
+	Filesharing:
+	Filesharing is a relatively simple addition to the other two arguments of exec. When a file is 
+opened, we mark on a per-process bitmap which of the 20 possible opened files was opened. When a process is 
+exec'd with a shareflag, we just copy the bitmap over to the child. When a process exits, if a child has not already
+closed a file, the files will all be closed. A reference count is kept inside our file descriptor array (more on this
+later), and a file is only truely closed if the process is the last process referencing it. 
+
+Exit():
+	Exit() converts all negative statuses to 1. Presumably if someone wanted a negative value
+	then there was something wrong, so non-zero all mean something went wrong. It then attempts to close
+	any open file descriptors.
+	
+	Next, it wakes any potential parents that might be waiting to join. It sets its process status to done.
+	If there are children still running, they obviously don't need to signal any waiting parent, because the
+	parent is exiting. 
+
+	If a process has open files, it closes them before exiting. The reference count associated with each file
+	must be 0 for a true close, otherwise the reference count is decremented and the file remains open. 
+
+	The address space is then deleted to make room for more programs, and currentThread->Finish() is called,
+	signalling an end to this thread.
+
+
+Join():
+	The code in Join() is very simple. It simply calls ProcessInfo::ProcessJoin(), which handles
+	all the details. 
+
+	ProcessJoin() checks the list of children for the current process to find an id match. If no match is 
+	found, -1 is returned. If there is a match, the parent waits on the child to exit.
+
+Read():
+	Gets the filename to be read from the kernel. If the file descriptor parameter is out of bounds, 
+	, for a non-existent file, Read()
+	returns a -1. ConsoleInput is handled separately from reading from actual files. It will wait on 
+	the console until the number of bytes specified as a parameter are read. It returns the number
+	of bytes read. 
+
+
+Write():
+	Implemented similarly to Read(), but in reverse. Gets the file descriptor as a parameter. 
+	Returns a -1 on any errors. 
+
+
+Open():
+	Implemented similarly to above. Called as a result of the Open() syscall. When the file 
+	is opened, the handler finds an empty slot in the array of open file storage. In addition, 
+	it updates the bitmap of the current process to indicate which files the currentThread 
+	has open. This is utilized only for file sharing between exec'd processes  
+	File names can only be 127 chars plus the null byte.
+	
+
+
+Close():
+	Implemented similarly to above. Closes the specified file. Checks to make sure that 
+	nobody else is using the same file before it is close. By convention, if a parent execs 
+	a kid with shared file access, the kid MUST close the file(s) before exiting.
+	If the kid is closing a shared file descriptor, the reference count associated with that
+	file is decremented. Thus the file  can only be closed when the reference count is 0.
+
+
+	
+SynchConsole:
+	SynchConsole is implemented on top of the machine console to provide synchronous access.
+	It is implemented with Semaphores and a lock. The semaphores control letting the system know when a 
+	read is available and a write is done, and the lock ensures that only one process is accessing the 
+	synchconsole at a time. 
+
+	There are two functions outside the class that act as callback functions to call the methods in the class 
+	itself. These in turn perform a V() on the appropriate semaphores. 
+
+	There are two public write methods, and one public read method. These acquire the lock to ensure mutex on 
+	the console. These call the private methods that actually access the system console. There is a writeline()
+	method that holds the lock for a sequence of chars. There is also a SynchPutChar() method that writes one
+	char at a time, and similarly, there is a SynchGetChar() method that reads one char at a time. 
+
+	The private methods within the class that access the system console each perform a P() operation on the 
+	appropriate semaphores so that access to the synchconsole is restricted while the actual console operations,
+	and underlying HW mechanisms are in progress. 
+	
+	The synchconsole exists for the life of the system.
+
+
+shell.c:
+	 shell.c has been augmented with the capacity to accept arguments. It does this by detecting when 
+	 there is a space in the input. The buffer is extended to be 180 bytes instead of 60. When a space
+	 is detected, the buffer puts a null character in its place, and then char* argv[i+1] is set to be 
+	 the location in the buffer of that null character plus one. 
+
+	 The drawback to this approach is that when a space is at the end of the input line, argv will have
+	 one extra entry at the end of the array such that the string referenced is the null character. 
+
+	 The shell is responsible for constructing the entire argument list of any child process, including
+	 the executable name. 
+
+cat.c
+	 This is a clone of the unix/linux cat program. It accepts multiple arguments (the shell can pass 
+	 on up to 9)and for each argument, prints out the contents of the file associated with the argument.
+	 If an argument in the argument list is invalid, the program continues with the next argument.
+
+
+cp.c
+	 This is a clone of the unix/linux cp program. It accepts two and only two arguments. It creates a file 
+	 named <argument2>, and copies the contents of <argument1> into <argument2>. If <argument2> already
+	 exists, it will be clobbered. 
+
