@@ -8,6 +8,16 @@ On the other hand, in order to run with no arguments passed to the child program
 and without file sharing, argument two should be <(char *) 0> and argument three
 should just be 0. 
 
+How to run: 
+       All user-level programs should work according to specs. They are run from the test*/ directory with
+       ../userprog/nachos -x <program>
+
+       In some cases, when a program exits with Exit(), CTRL-C may be require to get back to the linux console. 
+
+       When programs are run from the shell, the Halt() system call is the only thing that a user can do that 
+       terminates the shell. Leaving a space at the end of the line can result in an extra, empty, argument 
+       getting passed to the child. This is detailed below in the shell.c section.
+
 Implementation:
 
 Memory translation has been implemented using a fairly straightforward process. 
@@ -63,6 +73,8 @@ ProcessInfo:
 	It might be overkill, but better safe than sorry.
 
 Exec:
+	Exec() is responsible for thread creation. Its basic functionality is  similar to the StartProcess() 
+	function in nachos with differences detailed below. 
 
 	Standard exec with one argument:
 		We first get the name of the executable that has been reference by the parent process. 
@@ -85,21 +97,79 @@ closed a file, the files will all be closed. A reference count is kept inside ou
 later), and a file is only truely closed if the process is the last process referencing it. 
 
 Exit():
+	Exit() converts all negative statuses to 1. Presumably if someone wanted a negative value
+	then there was something wrong, so non-zero all mean something went wrong. It then attempts to close
+	any open file descriptors.
+	
+	Next, it wakes any potential parents that might be waiting to join. It sets its process status to done.
+	If there are children still running, they obviously don't need to signal any waiting parent, because the
+	parent is exiting. 
 
+	If a process has open files, it closes them before exiting. The reference count associated with each file
+	must be 0 for a true close, otherwise the reference count is decremented and the file remains open. 
+
+	The address space is then deleted to make room for more programs, and currentThread->Finish() is called,
+	signalling an end to this thread.
 
 
 Join():
+	The code in Join() is very simple. It simply calls ProcessInfo::ProcessJoin(), which handles
+	all the details. 
 
+	ProcessJoin() checks the list of children for the current process to find an id match. If no match is 
+	found, -1 is returned. If there is a match, the parent waits on the child to exit.
+
+Read():
+	Gets the filename to be read from the kernel. If the file descriptor parameter is out of bounds, 
+	, for a non-existent file, Read()
+	returns a -1. ConsoleInput is handled separately from reading from actual files. It will wait on 
+	the console until the number of bytes specified as a parameter are read. It returns the number
+	of bytes read. 
+
+
+Write():
+	Implemented similarly to Read(), but in reverse. Gets the file descriptor as a parameter. 
+	Returns a -1 on any errors. 
+
+
+Open():
+	Implemented similarly to above. Called as a result of the Open() syscall. When the file 
+	is opened, the handler finds an empty slot in the array of open file storage. In addition, 
+	it updates the bitmap of the current process to indicate which files the currentThread 
+	has open. This is utilized only for file sharing between exec'd processes  
+	File names can only be 127 chars plus the null byte.
 	
 
-// These are just what I have no gotten to
-TODO:
 
-Read
-Write
-Open
-Close
-anything else...
+Close():
+	Implemented similarly to above. Closes the specified file. Checks to make sure that 
+	nobody else is using the same file before it is close. By convention, if a parent execs 
+	a kid with shared file access, the kid MUST close the file(s) before exiting.
+	If the kid is closing a shared file descriptor, the reference count associated with that
+	file is decremented. Thus the file  can only be closed when the reference count is 0.
+
+
+	
+SynchConsole:
+	SynchConsole is implemented on top of the machine console to provide synchronous access.
+	It is implemented with Semaphores and a lock. The semaphores control letting the system know when a 
+	read is available and a write is done, and the lock ensures that only one process is accessing the 
+	synchconsole at a time. 
+
+	There are two functions outside the class that act as callback functions to call the methods in the class 
+	itself. These in turn perform a V() on the appropriate semaphores. 
+
+	There are two public write methods, and one public read method. These acquire the lock to ensure mutex on 
+	the console. These call the private methods that actually access the system console. There is a writeline()
+	method that holds the lock for a sequence of chars. There is also a SynchPutChar() method that writes one
+	char at a time, and similarly, there is a SynchGetChar() method that reads one char at a time. 
+
+	The private methods within the class that access the system console each perform a P() operation on the 
+	appropriate semaphores so that access to the synchconsole is restricted while the actual console operations,
+	and underlying HW mechanisms are in progress. 
+	
+	The synchconsole exists for the life of the system.
+
 
 shell.c:
 	 shell.c has been augmented with the capacity to accept arguments. It does this by detecting when 
