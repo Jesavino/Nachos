@@ -37,7 +37,7 @@ MemoryManager:
 		indicate only using Read and Write mem, but we found for most situations, directly using 
 		translate did the job a lot better and with less overhead. 
 
-Proccess:
+Process:
 	John I will leave this to you to write up
 
 Exec:
