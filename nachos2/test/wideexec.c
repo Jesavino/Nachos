@@ -20,17 +20,17 @@ main()
 
   prints("WIDEEXEC exists\n", ConsoleOutput);
 
-  kid1 = Exec("widekid1", (char*)0 , 0);
+  kid1 = Exec("widekid1", (char **)0 , 0);
   prints("WIDEEXEC after 1st exec; kid1 pid is ", ConsoleOutput);
   printd((int)kid1, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
-  kid2 = Exec("widekid2", (char *)0 , 0);
+  kid2 = Exec("widekid2", (char **)0 , 0);
   prints("WIDEEXEC after 2nd exec; kid2 pid is ", ConsoleOutput);
   printd((int)kid2, ConsoleOutput);
   prints("\n", ConsoleOutput);
 
-  kid3 = Exec("widekid3", (char *)0, 0);
+  kid3 = Exec("widekid3", (char **)0, 0);
   prints("WIDEEXEC after 3rd exec; kid3 pid is ", ConsoleOutput);
   printd((int)kid3, ConsoleOutput);
   prints("\n", ConsoleOutput);

@@ -378,6 +378,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 // created. This eventually called machine->Run() on the exec'd thread
 //
 // ---------------------------------------------------------------------
+
 void execThread(int arg) {
   
   currentThread->space->InitRegisters();		// set the initial register values
@@ -404,6 +405,7 @@ void execThread(int arg) {
 // 					PID of kid otherwise
 //
 // -------------------------------------------------------------------------
+
 void execFile() {
   argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
@@ -457,19 +459,26 @@ void execFile() {
     return;
   }
 
+  // create a new addressSpace to be given to new thread
   newSpace = new(std::nothrow) AddrSpace(executable);    
   if (newSpace->getFail()) {
+    // if address space failed for any reason, delete it
+    // and return -1
     delete newSpace;
     machine->WriteRegister(2, -1);
     return;
   }
+
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = newSpace;
-  procLock->Acquire();
+  
+  // each new execed program is given a pid that is in sequence.
+  // We have not worried about overflow
   thread->pid = pid++;
+  // don't need mutex on processinfo here, because a child does not exist yet to
+  // modify it.
   thread->procInfo = new(std::nothrow) ProcessInfo(thread->pid, currentThread->pid);
   currentThread->procInfo->AddChild(thread->procInfo);
-  procLock->Release();
 
   // if files are to be shared, make sure the new threads bitmap matches that of 
   // the old thread
@@ -531,13 +540,18 @@ exitCloseFile(int i) {
 //
 // ----------------------------------------------------------------------
 void exit() {
+  // get exitstatus 
   int exitStatus = machine->ReadRegister(4);
+  // if non-zero, needs to be positive
   if (exitStatus < 0) {
     DEBUG('a', "Exit values need to be non-negative\n");
     exitStatus = 1;
   }
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
+
+  // get mutex on processinfo, because we don't want child
+  // changing the status on the parent.
   procLock->Acquire();
   ProcessInfo * child;
 
@@ -549,23 +563,37 @@ void exit() {
       }
     }	
   }
+
+  // for all children, if they are done running, delete their
+  // processinfo
   while ((child = currentThread->procInfo->GetChild()) != NULL ) {
     if (child->GetStatus() == DONE) {
       delete child;
     }
+    // if not done, make sure the child knows to 
+    // take care of itself later
     else
       child->setStatus(ZOMBIE);
   }
+  
+  // like here!
   if (currentThread->procInfo->GetStatus() == ZOMBIE) {
     delete currentThread->procInfo;
   }
+
+  // When a child is done, it wakes a parent if there is
+  // one waiting to join.
   else {
     currentThread->procInfo->setStatus(DONE);
     
     currentThread->procInfo->setExitStatus(exitStatus);
     currentThread->procInfo->WakeParent();
   }
+  
+  // release the mutex on the processinfo
   procLock->Release();
+  
+  // toss the addrspace so we have memory to run more programs.
   delete currentThread->space;
   currentThread->Finish();
   
@@ -579,14 +607,15 @@ void exit() {
 //----------------------------------------------------------------------
 
 void joinProcess() {
+  // get the pid of the process to be joined
   SpaceId joinId = machine->ReadRegister(4);
-
-  // delete processinfo for each child that is joined.
-  // because once they are joined, we do not need them anymore.
-  //procLock->Acquire();
+  
+  // actual joining done in processinfo, where the parent waits 
+  // on a condition variable
+  // don't need mutex here because each function in processinfo
+  // has a lock.
   int exitStatus = currentThread->procInfo->ProcessJoin(joinId);
-  //procLock->Release();
-  //dummy return for now
+
   machine->WriteRegister(2, exitStatus);
 }
 

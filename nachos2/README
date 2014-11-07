@@ -5,7 +5,7 @@ Group Members: John Savino, Thom Matessich, John Cooper
 As of submission of this document, Exec has been implemented with three
 arguments. The first is the name of the binary to exec, and this is required. 
 On the other hand, in order to run with no arguments passed to the child program, 
-and without file sharing, argument two should be <(char **) 0> and argument three
+and without file sharing, argument two should be <(char *) 0> and argument three
 should just be 0. 
 
 Implementation:
@@ -14,14 +14,21 @@ Memory translation has been implemented using a fairly straightforward process.
 
 Address Space:
 	When an Address Space is constructed, it must be passed an executable. From this 
-executable, we determine how many physical pages of memory the executable will need. 
-Using a bitmap of page allocation accross the whole of physical memory, we assign a 
-mapping from virtual page to physical page, which is stored in a TranslationEntry object. 
-Each process running has one of the translation object, so on context switch, we just 
-make sure the system knows which lookup table to go to on TLB fault. 
+	executable, we determine how many physical pages of memory the executable will need. 
+	Using a bitmap of page allocation accross the whole of physical memory, we assign a 
+	mapping from virtual page to physical page, which is stored in a TranslationEntry object. 
+	Each process running has one of the translation object, so on context switch, we just 
+	make sure the system knows which lookup table to go to on TLB fault. 
+
 	Once a process has been assigned a set of physical pages, we go through and byte by 
-byte copy the information from the noff header file into the correct locations in 
-physical memory. 
+	byte copy the information from the noff header file into the correct locations in 
+	physical memory. 
+	 
+	Each AddressSpace has been augmented with a fail flag, which can be set in the 
+	constructor on either a memory allocation failure or a bad executable detection.
+	This flag is then checked by the function calling the constructor(Exec() system call)
+	and when it detects the failure, exec gets rid of any information about the process and
+	returns a -1. 
 
 MemoryManager:
 	The Memory Manager does three things in our implementation. 
@@ -37,8 +44,20 @@ MemoryManager:
 		indicate only using Read and Write mem, but we found for most situations, directly using 
 		translate did the job a lot better and with less overhead. 
 
-Process:
-	John I will leave this to you to write up
+ProcessInfo:
+	To handle the Exit() and Join() system calls, we have created a new class ProcessInfo. 
+	Each thread is given its own copy of ProcessInfo (with status set to RUNNING), 
+	which stores its process id, its exit status, its current status (RUNNING or DONE or ZOMBIE), 
+	and a list of its children. When a process exits, its exit status is assigned from the 
+	argument to the syscall, and its status is set to DONE. 
+	
+	Each child's ProcessInfo lives for as long as its parent is running. The parent is thus
+	responsible for deleting a child's ProcessInfo when the child is joined. 
+	Also, the parent deletes any remaining, unjoined child ProcessInfos when the parent exits,
+	because only the immediate parent needs to join any children. If any child process is still
+	running when the parent exits, the child status is set to ZOMBIE (in breaking from unix/linux 
+	terminology, ZOMBIE here means without parent) and then the child deletes its own ProcessInfo 
+	when it exits. 
 
 Exec:
 
@@ -62,6 +81,9 @@ exec'd with a shareflag, we just copy the bitmap over to the child. When a proce
 closed a file, the files will all be closed. A reference count is kept inside our file descriptor array (more on this
 later), and a file is only truely closed if the process is the last process referencing it. 
 
+Exit():
+	
+
 // These are just what I have no gotten to
 TODO:
 
@@ -74,4 +96,27 @@ Join
 Process management
 Shell implementation
 anything else...
+
+shell.c:
+	 shell.c has been augmented with the capacity to accept arguments. It does this by detecting when 
+	 there is a space in the input. The buffer is extended to be 180 bytes instead of 60. When a space
+	 is detected, the buffer puts a null character in its place, and then char* argv[i+1] is set to be 
+	 the location in the buffer of that null character plus one. 
+
+	 The drawback to this approach is that when a space is at the end of the input line, argv will have
+	 one extra entry at the end of the array such that the string referenced is the null character. 
+
+	 The shell is responsible for constructing the entire argument list of any child process, including
+	 the executable name. 
+
+cat.c
+	 This is a clone of the unix/linux cat program. It accepts multiple arguments (the shell can pass 
+	 on up to 9)and for each argument, prints out the contents of the file associated with the argument.
+	 If an argument in the argument list is invalid, the program continues with the next argument.
+
+
+cp.c
+	 This is a clone of the unix/linux cp program. It accepts two and only two arguments. It creates a file 
+	 named <argument2>, and copies the contents of <argument1> into <argument2>. If <argument2> already
+	 exists, it will be clobbered. 
 

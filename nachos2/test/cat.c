@@ -26,7 +26,7 @@ main(argc, argv)
       prints("cat: ", ConsoleOutput);
       prints(argv[i], ConsoleOutput);
       prints(": No such file or directory\n", ConsoleOutput);
-      Exit(1);
+      continue;
     }
 
     
