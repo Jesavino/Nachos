@@ -40,7 +40,10 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
   SpaceId first = -1;
   SpaceId last = -1;
   ProcessInfo * child = (ProcessInfo *)children->Remove();
-  if (child == NULL) return -1;
+  if (child == NULL) {
+    lock->Release();
+    return -1;
+  }
   first = child->GetPid();
 
   while (first != last) {
