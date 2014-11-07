@@ -40,12 +40,12 @@ class AddrSpace {
 
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch
- 
 
 #ifdef CHANGED
     TranslationEntry* getPageTable(); // in order to get access to the page table
     AddrSpace Fork(); // to be implemented later
     void PrintRegisters(); //just a function for debugging
+    int getFail();
     int NumPages;
 
     TranslationEntry *pageTable;	// how we keep track of memory
@@ -53,6 +53,7 @@ class AddrSpace {
 															// address space		
     MemoryManager *memManager;
 #endif
+    int fail;
 };
 
 #endif // ADDRSPACE_H

@@ -458,6 +458,11 @@ void execFile() {
   }
 
   newSpace = new(std::nothrow) AddrSpace(executable);    
+  if (newSpace->getFail()) {
+    delete newSpace;
+    machine->WriteRegister(2, -1);
+    return;
+  }
   Thread * thread = new(std::nothrow) Thread("execed thread");
   thread->space = newSpace;
   procLock->Acquire();
@@ -466,19 +471,19 @@ void execFile() {
   currentThread->procInfo->AddChild(thread->procInfo);
   procLock->Release();
 
-	// if files are to be shared, make sure the new threads bitmap matches that of 
-	// the old thread
-	if (machine->ReadRegister(6)) {
-		BitMap *bitmapCopy = new(std::nothrow) BitMap(NumOpenFiles);
-		for (int i = 0 ; i < NumOpenFiles ; i++) {
-			if(currentThread->openFilesMap->Test(i)) {
-				bitmapCopy->Mark(i);
-				openFiles[i].refCount++;
-			}
-		}
-		thread->openFilesMap = bitmapCopy; // share all open files
-	}
-
+  // if files are to be shared, make sure the new threads bitmap matches that of 
+  // the old thread
+  if (machine->ReadRegister(6)) {
+    BitMap *bitmapCopy = new(std::nothrow) BitMap(NumOpenFiles);
+    for (int i = 0 ; i < NumOpenFiles ; i++) {
+      if(currentThread->openFilesMap->Test(i)) {
+	bitmapCopy->Mark(i);
+	openFiles[i].refCount++;
+      }
+    }
+    thread->openFilesMap = bitmapCopy; // share all open files
+  }
+  
   // calling thread given this threads pid
   machine->WriteRegister(2, thread->pid);
   argSpace = thread->space;

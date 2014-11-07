@@ -75,14 +75,19 @@ AddrSpace::AddrSpace(OpenFile *executable)
 #ifndef USE_TLB
     unsigned int i;
 #endif
-	
+    
     if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
       SwapHeader(&noffH);
-    ASSERT(noffH.noffMagic == NOFFMAGIC);
-    
+#ifdef CHANGED
+    fail = 0;
+    if (noffH.noffMagic != NOFFMAGIC) {
+      fail = 1;
+      return;
+    }
+#endif
 // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
       + UserStackSize;	// we need to increase the size
@@ -94,7 +99,11 @@ AddrSpace::AddrSpace(OpenFile *executable)
     // TODO
     // need to get rid of the assert and make sure that 
     // the system does not stop when we run a program that is too big.
-    ASSERT((unsigned int) bitmap->NumClear() >= numPages);
+    if ((unsigned int) bitmap->NumClear() < numPages) {
+      numPages = 0;
+      fail = 1;
+      return;
+    }
     //ASSERT(numPages <= NumPhysPages);		// check we're not trying
 						// to run anything too big --
 						// at least until we have
@@ -170,16 +179,23 @@ AddrSpace::AddrSpace(OpenFile *executable)
 AddrSpace::~AddrSpace()
 {
 #ifdef CHANGED
+  if (fail) {
   for (unsigned int i = 0; i < numPages; i++){
     //printf("%d\n", pageTable[i].physicalPage);
     bitmap->Clear(pageTable[i].physicalPage);
   }
+  
   //#endif
   //#ifndef USE_TLB
    delete pageTable;
+  }
 #endif
 }
 
+
+int AddrSpace::getFail() {
+  return fail;
+}
 //----------------------------------------------------------------------
 // AddrSpace::InitRegisters
 // 	Set the initial values for the user-level register set.
