@@ -39,11 +39,12 @@ main()
 	
 	buffer[--i] = '\0';
 	argv[j] = (char *) 0;
+	/*
 	for (j = 0; argv[j] != (char *) 0; j++) {
 	  prints(argv[j], output);
 	  prints("\n", output);
 	}
-
+	*/
 	if( i > 0 ) {
 	  if ((newProc = Exec(argv[0], argv, 0)) == -1) {
 	    prints("Cannot Exec file\n", ConsoleOutput);
