@@ -52,8 +52,8 @@ class AddrSpace {
     unsigned int numPages;		// Number of pages in the virtual 
 															// address space		
     MemoryManager *memManager;
-#endif
     int fail;
+#endif
 };
 
 #endif // ADDRSPACE_H

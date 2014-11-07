@@ -36,7 +36,10 @@ StartProcess(char *filename)
 	printf("Unable to open file %s\n", filename);
 	return;
     }
-    space = new(std::nothrow) AddrSpace(executable);    
+    space = new(std::nothrow) AddrSpace(executable);
+    if (space->fail) {
+      return;
+    }
     currentThread->space = space;
 #ifdef CHANGED
     // this process has no parent, but we will give it a parentid of -1

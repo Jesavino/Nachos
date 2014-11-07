@@ -6,9 +6,7 @@
 #include "synch.h"
 #include "thread.h"
 
-//class Lock;
-//class Condition;
-
+// various stati? statuses? states.
 #define  RUN  0
 #define  ZOMBIE   1
 #define  DONE     2

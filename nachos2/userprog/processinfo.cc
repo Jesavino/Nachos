@@ -2,6 +2,10 @@
 #include "processinfo.h"
 
 //----------------------------------------------------------------------
+// ProcessInfo( id, parentid)
+//     constructor for ProcessInfo
+//     id is the process id of this process
+//     parentid is the processid of the parent
 //----------------------------------------------------------------------
 
 ProcessInfo::ProcessInfo(SpaceId id, SpaceId parentid) {
@@ -15,38 +19,51 @@ ProcessInfo::ProcessInfo(SpaceId id, SpaceId parentid) {
 }
 
 //----------------------------------------------------------------------
+// ~ProcessInfo()
+//     Destructor
+//     gets rid of any dynamically allocated data
 //----------------------------------------------------------------------
 
 ProcessInfo::~ProcessInfo() {
 
-  // delete all the processinfos in the list, then delete the list itself.
+  // getting rid of the children is already taken care of in a system call.
+  // terrible design, honestly. 
   delete children;
   delete cond;
   delete lock;
 }
 
 //----------------------------------------------------------------------
+// ProcessJoin(childid)
+//    wait until child is done running, then return its exit status
+//    there should be a list of children. Find the correct child.
+//    if its status == DONE, get its exitStatus and return that
+//    if status != done, wait until it is.
+//    when done, can delete the child.
+//    childid is the pid of the child.
 //----------------------------------------------------------------------
 
 int ProcessInfo::ProcessJoin(SpaceId childId) {
-  // wait until child is done running, then return its exit status
-  // there should be a list of children. Find the correct child.
-  // if its status == DONE, get its exitStatus and return that
-  // if status != done, wait until it is.
-  // when done, can delete the child.
 
+  // get mutex on this processInfo, any parent will have to wait
   lock->Acquire();
 
   SpaceId first = -1;
   SpaceId last = -1;
+  
+  // get first child off the list
   ProcessInfo * child = (ProcessInfo *)children->Remove();
   if (child == NULL) {
     lock->Release();
     return -1;
   }
+
+  // if we access the same child twice, the one we are looking for is 
+  // not in the list
   first = child->GetPid();
 
   while (first != last) {
+    // We found the correct child
     if (childId == child->GetPid()) {
       break;
     }
@@ -58,12 +75,14 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
   
   //if there is no child with that id
   if (childId != child->GetPid()) {
+    // release mutex
     lock->Release();
+    // put this child back in the list of children
     AddChild(child);
     return -1;
-    // Children->Append(child);
   }
-
+  
+  // get mutex on the child, will wait on that mutex.
   child->lock->Acquire();
   if (child->GetStatus() != DONE) {
     child->cond->Wait(child->lock);
@@ -79,6 +98,8 @@ int ProcessInfo::ProcessJoin(SpaceId childId) {
 }
 
 //----------------------------------------------------------------------
+// GetPid()
+//     return pid of this process
 //----------------------------------------------------------------------
 
 SpaceId ProcessInfo::GetPid() {
@@ -89,6 +110,8 @@ SpaceId ProcessInfo::GetPid() {
 }
 
 //----------------------------------------------------------------------
+// GetChild()
+//     returns the processInfo of the first child in the list
 //----------------------------------------------------------------------
 
 ProcessInfo * ProcessInfo::GetChild() {
@@ -96,6 +119,8 @@ ProcessInfo * ProcessInfo::GetChild() {
 }
 
 //----------------------------------------------------------------------
+// AddChild(child)
+//     put child on the list of children
 //----------------------------------------------------------------------
 
 void ProcessInfo::AddChild(ProcessInfo *child) {
@@ -108,26 +133,30 @@ void ProcessInfo::AddChild(ProcessInfo *child) {
 }
 
 //----------------------------------------------------------------------
+// GetStatus()
+//     returns the status of this process.
 //----------------------------------------------------------------------
 
 int ProcessInfo::GetStatus() {
 
-  int returnStatus = status;
+  return status;
 
-  return returnStatus;
 }
 
 //----------------------------------------------------------------------
+// GetExitStatus()
+//      returns the exit status of this process
 //----------------------------------------------------------------------
 
 int ProcessInfo::GetExitStatus() {
 
-  int returnStatus = exitStatus;
+  return exitStatus;
 
-  return returnStatus;
 }
 
 //----------------------------------------------------------------------
+// setExitStatus(eStatus)
+//     sets the exit status of this process
 //----------------------------------------------------------------------
 
 void ProcessInfo::setExitStatus(int eStatus) {
@@ -137,6 +166,8 @@ void ProcessInfo::setExitStatus(int eStatus) {
 }
 
 //----------------------------------------------------------------------
+// setStatus(newStatus(
+//     sets the status of the process
 //----------------------------------------------------------------------
 
 void ProcessInfo::setStatus(int newStatus) {
@@ -146,6 +177,8 @@ void ProcessInfo::setStatus(int newStatus) {
 }
 
 //----------------------------------------------------------------------
+// WakeParent()
+//     wake a parent that is waiting on this child.
 //----------------------------------------------------------------------
 
 void ProcessInfo::WakeParent() {

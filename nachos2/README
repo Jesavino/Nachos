@@ -59,6 +59,9 @@ ProcessInfo:
 	terminology, ZOMBIE here means without parent) and then the child deletes its own ProcessInfo 
 	when it exits. 
 
+	Many of the methods in the ProcessInfo class ensure mutex (especially the set methods).
+	It might be overkill, but better safe than sorry.
+
 Exec:
 
 	Standard exec with one argument:
@@ -82,6 +85,11 @@ closed a file, the files will all be closed. A reference count is kept inside ou
 later), and a file is only truely closed if the process is the last process referencing it. 
 
 Exit():
+
+
+
+Join():
+
 	
 
 // These are just what I have no gotten to
@@ -91,10 +99,6 @@ Read
 Write
 Open
 Close
-Exit
-Join
-Process management
-Shell implementation
 anything else...
 
 shell.c:

@@ -65,6 +65,9 @@ SwapHeader (NoffHeader *noffH)
 //	memory.  For now, this is really simple (1:1), since we are
 //	only uniprogramming, and we have a single unsegmented page table
 //
+//      If the address space creation has failed, it sets a flag, which is
+//      in turn checked by the caller
+//
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
@@ -82,6 +85,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
       SwapHeader(&noffH);
 #ifdef CHANGED
+    // assume the creation has not failed yet
     fail = 0;
     if (noffH.noffMagic != NOFFMAGIC) {
       fail = 1;
