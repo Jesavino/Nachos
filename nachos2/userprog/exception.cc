@@ -261,7 +261,7 @@ void readFile() {
 		// error reading from closed or non-existing file
 		machine->WriteRegister(2, -1);
 	}
-	else if( !currentThread->openFilesMap->Test(file)) {
+	else if( currentThread->openFilesMap == NULL || !currentThread->openFilesMap->Test(file)) {
 		machine->WriteRegister(2, -1);
 	}
 	else {
@@ -301,7 +301,7 @@ void closeFile() {
 		if (!openFiles[file].used)
 			return;
 		  		//fprintf(stderr, "File not open to be closed!\n");
-		if ( ! currentThread->openFilesMap->Test(file)) {
+		if ( currentThread->openFilesMap == NULL || !currentThread->openFilesMap->Test(file)) {
 			return;
 			//fprintf(stderr, "Cannot Close a file you do not own\n");
 		}
