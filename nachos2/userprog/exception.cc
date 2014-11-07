@@ -645,8 +645,9 @@ HandleTLBFault(int vaddr)
 	// Otherwise, kill the process
 	if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
 		// here we kill the process
-		// Return exit code of 0?
-		machine->WriteRegister(4, 0);
+		// Return exit code of 1
+	        // indicating abnormal exit
+		machine->WriteRegister(4, 1);
 		exit();
 	}
 
