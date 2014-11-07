@@ -27,4 +27,7 @@ test/wideexec
 test/widekid3
 test/widekid2
 test/widekid1
-
+test/bogus1
+test/noshare
+test/script
+test/sharekid
