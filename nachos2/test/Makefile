@@ -36,12 +36,18 @@ CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
 all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec bogus2\
 	parent kid cat cp argtest argkid deepexec kid4 kid5 wideexec widekid1 widekid2\
-	widekid3
+	widekid3 bogus1
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
 	$(AS) $(ASFLAGS) -o start.o strt.s
 	rm strt.s
+
+bogus1.o: bogus1.c
+	$(CC) $(CFLAGS) -c bogus1.c
+bogus1: bogus1.o start.o
+	$(LD) $(LDFLAGS) start.o bogus1.o -o bogus1.coff
+	../bin/coff2noff bogus1.coff bogus1
 
 wideexec.o: wideexec.c
 	$(CC) $(CFLAGS) -c wideexec.c

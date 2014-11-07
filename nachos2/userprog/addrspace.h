@@ -47,7 +47,7 @@ class AddrSpace {
     void PrintRegisters(); //just a function for debugging
     int getFail();
     int NumPages;
-
+		int MaxVirtualAddress;
     TranslationEntry *pageTable;	// how we keep track of memory
     unsigned int numPages;		// Number of pages in the virtual 
 															// address space		

@@ -100,6 +100,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
     size = numPages * PageSize;
     
 #ifdef CHANGED
+		// Set the maximum VA size possible for this addrspace
+		MaxVirtualAddress = numPages * PageSize;
+
+
     // TODO
     // need to get rid of the assert and make sure that 
     // the system does not stop when we run a program that is too big.

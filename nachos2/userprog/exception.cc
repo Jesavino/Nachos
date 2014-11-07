@@ -641,6 +641,14 @@ HandleTLBFault(int vaddr)
   int i;
 
   stats->numTLBFaults++;
+	// need to make sure we are referencing within our address space
+	// Otherwise, kill the process
+	if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
+		// here we kill the process
+		// Return exit code of 0?
+		machine->WriteRegister(4, 0);
+		exit();
+	}
 
   // First, see if free TLB slot
   for (i=0; i<TLBSize; i++)
