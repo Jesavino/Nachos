@@ -311,8 +311,8 @@ void closeFile() {
 			openFiles[file].used = 0;
 			openFiles[file].name = NULL;
 			openFiles[file].openFile = NULL;
-			currentThread->openFilesMap->Clear(file);
 		}
+		currentThread->openFilesMap->Clear(file);
 	}
 }
 
@@ -550,11 +550,6 @@ void exit() {
   DEBUG('s', "Exiting with status %d\n", exitStatus);
   // set status in process to done
 
-  // get mutex on processinfo, because we don't want child
-  // changing the status on the parent.
-  procLock->Acquire();
-  ProcessInfo * child;
-
   // attempt to close all open files
   if (currentThread->openFilesMap != NULL) {
     for( int i =  2; i < NumOpenFiles ; i++) {
@@ -563,6 +558,11 @@ void exit() {
       }
     }	
   }
+
+  // get mutex on processinfo, because we don't want child
+  // changing the status on the parent.
+  procLock->Acquire();
+  ProcessInfo * child;
 
   // for all children, if they are done running, delete their
   // processinfo
