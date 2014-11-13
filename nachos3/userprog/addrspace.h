@@ -20,6 +20,7 @@
 
 #ifdef CHANGED
 #include "memManager.h"
+#include "pageinfo.h"
 #endif
 
 #define UserStackSize		1024 	// increase this as necessary!
@@ -43,12 +44,12 @@ class AddrSpace {
 
 #ifdef CHANGED
     TranslationEntry* getPageTable(); // in order to get access to the page table
-    AddrSpace Fork(); // to be implemented later
+		AddrSpace Fork(); // to be implemented later
     void PrintRegisters(); //just a function for debugging
     int getFail();
     int NumPages;
 		int MaxVirtualAddress;
-    TranslationEntry *pageTable;	// how we keep track of memory
+    PageInfo *pageTable;	// how we keep track of memory
     unsigned int numPages;		// Number of pages in the virtual 
 															// address space		
     MemoryManager *memManager;
