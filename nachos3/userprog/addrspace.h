@@ -17,17 +17,34 @@
 #include "filesys.h"
 #include "bitmap.h"
 #include "syscall.h"
-
 #ifdef CHANGED
 #include "memManager.h"
-#include "pageinfo.h"
 #endif
 
 #define UserStackSize		1024 	// increase this as necessary!
 
 #ifdef CHANGED
 class MemoryManager;
+class SynchDisk;
 #endif
+
+class PageInfo {
+  public:
+    int virtualPage;  	// The page number in virtual memory.
+    int physicalPage;  	// The page number in real memory (relative to the
+			//  start of "mainMemory"
+		int diskPage;				// The disk segment the page lives on
+    bool valid;         // If this bit is set, the translation is ignored.
+			// (In other words, the entry hasn't been initialized.)
+    bool readOnly;	// If this bit is set, the user program is not allowed
+			// to modify the contents of the page.
+    bool use;           // This bit is set by the hardware every time the
+			// page is referenced or modified.
+    bool dirty;         // This bit is set by the hardware every time the
+			// page is modified.
+		bool onDisk; 				// this is set when the page is moved into / out of
+			// main memory.
+};
 
 class AddrSpace {
   public:
@@ -43,7 +60,7 @@ class AddrSpace {
     void RestoreState();		// info on a context switch
 
 #ifdef CHANGED
-    TranslationEntry* getPageTable(); // in order to get access to the page table
+    PageInfo* getPageTable(); // in order to get access to the page table
 		AddrSpace Fork(); // to be implemented later
     void PrintRegisters(); //just a function for debugging
     int getFail();

@@ -662,7 +662,7 @@ HandleTLBFault(int vaddr)
   // Otherwise clobber random slot in TLB
 
 	// need to get correct physical page
-	TranslationEntry * table = currentThread->space->getPageTable();
+	PageInfo * table = currentThread->space->getPageTable();
 	// the ith entry is always the ith virtual page
 	
 	// need to see if the page we are looking for is in mainMemory or on disk

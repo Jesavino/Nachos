@@ -16,9 +16,9 @@
 // of liability and disclaimer of warranty provisions.
 
 #include "copyright.h"
-#include "system.h"
 #include "addrspace.h"
 #include "noff.h"
+#include "system.h"
 #include <new>
 
 #ifdef CHANGED
@@ -292,7 +292,7 @@ void AddrSpace::RestoreState()
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-TranslationEntry*
+PageInfo*
 AddrSpace::getPageTable() {
 	return pageTable;
 }

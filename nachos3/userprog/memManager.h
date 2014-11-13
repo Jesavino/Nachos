@@ -8,7 +8,7 @@
 // A class for managing memory. All VA to PHYS address translation goes through
 // the memory manager
 class AddrSpace;
-
+class PageInfo;
 
 class MemoryManager {
 
@@ -31,7 +31,7 @@ class MemoryManager {
 
 	private:
 		Machine* machine;
-		TranslationEntry *tlb;
+		PageInfo *tlb;
 
 
 

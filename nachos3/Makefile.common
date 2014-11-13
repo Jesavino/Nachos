@@ -109,7 +109,7 @@ VM_H = ../filesys/synchdisk.h \
 	../machine/disk.h
 VM_C = ../filesys/synchdisk.cc \
 	../machine/disk.cc
-VM_O = synchdisk.o disk.o
+VM_O = synchdisk.o disk.o 
 
 FILESYS_H =../filesys/directory.h \
 	../filesys/filehdr.h\
