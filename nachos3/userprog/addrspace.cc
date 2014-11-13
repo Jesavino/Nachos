@@ -24,6 +24,9 @@
 #ifdef CHANGED
 BitMap * bitmap;
 
+BitMap *diskMap;
+SynchDisk *disk;
+
 // Returns available physical address
 int
 getPhysPageNum() {
@@ -130,7 +133,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 // first, set up the translation 
     int physPage;
     // int zeros[PageSize] = {0};
-    pageTable = new(std::nothrow) TranslationEntry[numPages];
+    pageTable = new(std::nothrow) PageInfo[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
       pageTable[i].virtualPage = i;
       physPage = getPhysPageNum();
