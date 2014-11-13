@@ -132,7 +132,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     // int zeros[PageSize] = {0};
     pageTable = new(std::nothrow) TranslationEntry[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
-      pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+      pageTable[i].virtualPage = i;
       physPage = getPhysPageNum();
       pageTable[i].physicalPage = physPage;
       pageTable[i].valid = true;
@@ -141,6 +141,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
       pageTable[i].readOnly = false;  // if the code segment was entirely on 
       // a separate page, we could set its 		
       // pages to be read-only
+
 
       memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
       bzero(machine->mainMemory + physAddr, PageSize);

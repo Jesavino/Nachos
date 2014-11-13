@@ -664,6 +664,9 @@ HandleTLBFault(int vaddr)
 	// need to get correct physical page
 	TranslationEntry * table = currentThread->space->getPageTable();
 	// the ith entry is always the ith virtual page
+	
+	// need to see if the page we are looking for is in mainMemory or on disk
+
 
   machine->tlb[victim].virtualPage = vpn;
   machine->tlb[victim].physicalPage = table[vpn].physicalPage;
