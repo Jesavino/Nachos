@@ -46,6 +46,7 @@
 
 //#include "processinfo.h"
 class ProcessInfo;
+class AddrSpace;
 #endif
 
 // CPU register state to be saved on context switch.  

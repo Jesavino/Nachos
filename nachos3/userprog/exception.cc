@@ -63,11 +63,74 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 
+int commutator = 0;
+struct PhysPageDesc{
+  int vpn;
+  int diskpage;
+  bool valid;
+  bool dirty;
+  AddrSpace * space;
+}physPageDesc[NumPhysPages];
 // The SynchConsole acts as a wrapper around the Console Singleton
 SynchConsole *synchConsole;
 
+extern SynchDisk * disk;
 // Lock to ensure mutex throughout access to process data
 Lock * procLock = new(std::nothrow) Lock("global process lock");
+
+int FindPageToReplace() {
+    for (int i = 0; i < NumPhysPages; i++) {
+      if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty){
+	return commutator;
+      }
+    commutator = (commutator +1) % NumPhysPages;
+    }
+    for (int i = 0; i < NumPhysPages; i++) {
+      if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty) {
+	//return dirty page
+	return commutator;
+      }
+      physPageDesc[commutator].valid = false;
+      commutator = (commutator + 1) % NumPhysPages;
+    }
+    return FindPageToReplace();
+}
+void LoadPageToMemory(int vpn, AddrSpace * space) {
+  //if page in memory, return
+  // else get page from disk into memory.
+  if (space->pageTable[vpn].physicalPage != -1) return;
+
+  int pageToReplace = FindPageToReplace();
+  int physAddr = pageToReplace * PageSize;
+
+  if (physPageDesc[pageToReplace].dirty) {
+    int diskSector = physPageDesc[pageToReplace].diskpage;
+    char * buffer = new char[128];
+    for (int i = 0; i < PageSize; i++) {
+      buffer[i] = machine->mainMemory[physAddr + i];
+    }
+    disk->WriteSector(diskSector, buffer);
+    //write page back to disk
+  }
+  if (physPageDesc[pageToReplace].space != NULL) {
+    AddrSpace * otherSpace = physPageDesc[pageToReplace].space;
+    otherSpace->pageTable[physPageDesc[pageToReplace].vpn].physicalPage = -1;
+  }
+  space->pageTable[vpn].physicalPage = pageToReplace;
+  //read page from disk into mainmemory[physAddr]
+  char *buffer = new char[128];
+  disk->ReadSector(space->pageTable[vpn].diskPage, buffer);
+
+  for (int i = 0; i <PageSize; i++) {
+    machine->mainMemory[physAddr + i] = buffer[i];
+  }
+
+  physPageDesc[pageToReplace].vpn = vpn;
+  physPageDesc[pageToReplace].diskpage = space->pageTable[vpn].diskPage;
+  physPageDesc[pageToReplace].valid = true;
+  physPageDesc[pageToReplace].dirty = false;
+  physPageDesc[pageToReplace].space = space;
+}
 
 // Increments the program counters
 void incrementPC() {
@@ -350,6 +413,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		tmp = argv[i];
 		//fprintf(stderr, "tmp is %s\n", tmp);
 		for ( int j = 0; j < len ; j++) {
+		  LoadPageToMemory((sp + j) / PageSize, currentThread->space);
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
 		}
@@ -642,15 +706,17 @@ HandleTLBFault(int vaddr)
   int i;
 
   stats->numTLBFaults++;
-	// need to make sure we are referencing within our address space
-	// Otherwise, kill the process
-	if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
-		// here we kill the process
-		// Return exit code of 1
-	        // indicating abnormal exit
-		machine->WriteRegister(4, 1);
-		exit();
-	}
+  // need to make sure we are referencing within our address space
+  // Otherwise, kill the process
+  if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
+    // here we kill the process
+    // Return exit code of 1
+    // indicating abnormal exit
+    machine->WriteRegister(4, 1);
+    exit();
+  }
+
+  LoadPageToMemory(vpn, currentThread->space);
 
   // First, see if free TLB slot
   for (i=0; i<TLBSize; i++)
@@ -661,9 +727,9 @@ HandleTLBFault(int vaddr)
 	
   // Otherwise clobber random slot in TLB
 
-	// need to get correct physical page
-	TranslationEntry * table = currentThread->space->getPageTable();
-	// the ith entry is always the ith virtual page
+  // need to get correct physical page
+  PageInfo * table = currentThread->space->getPageTable();
+  // the ith entry is always the ith virtual page
 
   machine->tlb[victim].virtualPage = vpn;
   machine->tlb[victim].physicalPage = table[vpn].physicalPage;

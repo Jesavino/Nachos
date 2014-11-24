@@ -18,6 +18,10 @@
 #ifdef CHANGED
 #include "synchconsole.h"
 #include "processinfo.h"
+
+BitMap * bitmap;
+BitMap * diskmap;
+SynchDisk *disk;
 #endif
 
 //----------------------------------------------------------------------
@@ -31,7 +35,10 @@ StartProcess(char *filename)
 {
     OpenFile *executable = fileSystem->Open(filename);
     AddrSpace *space;
-
+    bitmap = new(std::nothrow) BitMap(NumPhysPages);
+    diskmap = new(std::nothrow) BitMap(NumSectors);
+    char * diskname = "synchdisk";
+    disk = new(std::nothrow) SynchDisk(diskname);
     if (executable == NULL) {
 	printf("Unable to open file %s\n", filename);
 	return;

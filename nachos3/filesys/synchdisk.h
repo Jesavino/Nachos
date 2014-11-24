@@ -13,7 +13,11 @@
 
 #include "disk.h"
 #include "synch.h"
-
+#ifdef CHANGED
+class Thread;
+class Lock;
+class Semaphore;
+#endif
 // The following class defines a "synchronous" disk abstraction.
 // As with other I/O devices, the raw physical disk is an asynchronous device --
 // requests to read or write portions of the disk return immediately,
