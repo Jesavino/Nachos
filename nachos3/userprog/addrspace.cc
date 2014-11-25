@@ -22,7 +22,6 @@
 #include <new>
 
 #ifdef CHANGED
-extern BitMap * bitmap;
 extern BitMap * diskmap;
 extern SynchDisk * disk;
 // Returns available physical address
@@ -204,13 +203,14 @@ AddrSpace::~AddrSpace()
 #ifdef CHANGED
   if (!fail) {
   for (unsigned int i = 0; i < numPages; i++){
-    //printf("%d\n", pageTable[i].physicalPage);
+    //    printf("%d\n", pageTable[i].diskPage);
     diskmap->Clear(pageTable[i].diskPage);
   }
   
   //#endif
   //#ifndef USE_TLB
-   delete pageTable;
+   delete [] pageTable;
+   delete memManager;
   }
 #endif
 }
