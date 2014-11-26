@@ -70,6 +70,7 @@ struct PhysPageDesc{
   bool valid;
   bool dirty;
   AddrSpace * space;
+  Lock *pageLock = new(std::nothrow) Lock("lock for this page");
 }physPageDesc[NumPhysPages];
 // The SynchConsole acts as a wrapper around the Console Singleton
 SynchConsole *synchConsole;
@@ -85,6 +86,24 @@ void printppd() {
   for (int i = 0; i < NumPhysPages; i++) {
     printf("physical Page: %d diskPage: %d vpn: %d\n", i, physPageDesc[i].diskpage, physPageDesc[i].vpn);
   }
+}
+void
+LockPage(int vpn) {
+	int virtualPage = vpn / PageSize;
+	AddrSpace *space = currentThread->space;
+	PageInfo *table = space->getPageTable();
+	int physPage = table[virtualPage].physicalPage;
+
+	physPageDesc[physPage].pageLock->Acquire();
+}
+void 
+ReleasePage(int vpn) {
+	int virtualPage = vpn / PageSize;
+	AddrSpace *space = currentThread->space;
+	PageInfo *table = space->getPageTable();
+	int physPage = table[virtualPage].physicalPage;
+
+	physPageDesc[physPage].pageLock->Release();
 }
 
 int FindPageToReplace() {
@@ -114,6 +133,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
   int pageToReplace = FindPageToReplace();
+	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
       machine->tlb[i].valid = false;
@@ -121,6 +141,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   }
   int physAddr = pageToReplace * PageSize;
 
+  physPageDesc[pageToReplace].pageLock->Acquire();
   if (physPageDesc[pageToReplace].dirty) {
     int diskSector = physPageDesc[pageToReplace].diskpage;
     char * buffer = new char[128];
@@ -147,8 +168,10 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   physPageDesc[pageToReplace].vpn = vpn;
   physPageDesc[pageToReplace].diskpage = space->pageTable[vpn].diskPage;
   physPageDesc[pageToReplace].valid = true;
-  physPageDesc[pageToReplace].dirty = false;
+  physPageDesc[pageToReplace].dirty = true;
   physPageDesc[pageToReplace].space = space;
+
+  physPageDesc[pageToReplace].pageLock->Release();
 }
 
 // Increments the program counters
@@ -178,11 +201,13 @@ void createNewFile() {
 	
 	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
+		LockPage(whence);
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
+		ReleasePage(whence);
 		whence++;
 	}
 	stringarg[127] = '\0';
@@ -214,11 +239,13 @@ void openFile() {
 
 	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
+		LockPage(whence);
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
+		ReleasePage(whence);
 		whence++;
 	}
 	stringarg[127] = '\0';
@@ -278,11 +305,13 @@ void writeFile() {
  	
 	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
+		LockPage(whence + i);
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			//fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
+		ReleasePage(whence + i);
 	}
 	stringarg[size] = '\0';
 
@@ -360,10 +389,12 @@ void readFile() {
 		OpenFile *fileToRead = openFiles[file].openFile;
 		int numRead = fileToRead->Read( buffer , numBytes );
 		for ( int i = 0 ; i < numBytes ; i++) {
+			LockPage(whence + i);
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
 			  machine->WriteRegister(2,-1);
 				return;
 			}
+			ReleasePage(whence + i);
 		}
 		machine->WriteRegister(2 , numRead);
 	}
@@ -434,7 +465,6 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	int argvAddr[argcount];
 	int physAddr;
 	char * tmp;
-	pageLock->Acquire();
 	sp = machine->ReadRegister(StackReg);
 	for ( int i = 0 ; i < argcount ; i++) {
 		len = strlen(argv[i]) + 1;
@@ -465,7 +495,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
 	machine->WriteRegister(StackReg, sp - 8);
-	pageLock->Release();
+	
 }
 
 // ----------------------------------------------------------------------
@@ -738,7 +768,6 @@ HandleTLBFault(int vaddr)
   int victim = Random() % TLBSize;
   int i;
 
-  pageLock->Acquire();
   stats->numTLBFaults++;
   // need to make sure we are referencing within our address space
   // Otherwise, kill the process
@@ -771,7 +800,6 @@ HandleTLBFault(int vaddr)
   machine->tlb[victim].dirty = false;
   machine->tlb[victim].use = false;
   machine->tlb[victim].readOnly = false;
-  pageLock->Release();
 }
 
 #endif
