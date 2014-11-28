@@ -717,10 +717,12 @@ addrspace.o: ../userprog/addrspace.cc /usr/include/stdc-predef.h \
  /usr/include/c++/4.8/exception \
  /usr/include/c++/4.8/bits/atomic_lockfree_defines.h ../userprog/bitmap.h \
  ../filesys/openfile.h ../userprog/syscall.h ../userprog/memManager.h \
- ../userprog/addrspace.h ../filesys/synchdisk.h ../machine/disk.h \
- ../threads/synch.h ../threads/list.h ../threads/scheduler.h \
- ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
- ../machine/timer.h ../bin/noff.h
+ ../machine/machine.h ../machine/translate.h ../machine/disk.h \
+ ../filesys/synchdisk.h ../machine/disk.h ../threads/synch.h \
+ ../threads/thread.h ../threads/utility.h ../userprog/addrspace.h \
+ ../threads/list.h ../bin/noff.h ../threads/system.h \
+ ../threads/scheduler.h ../machine/interrupt.h ../threads/list.h \
+ ../machine/stats.h ../machine/timer.h
 bitmap.o: ../userprog/bitmap.cc /usr/include/stdc-predef.h \
  ../threads/copyright.h ../userprog/bitmap.h ../threads/utility.h \
  ../threads/copyright.h ../machine/sysdep.h /usr/include/stdlib.h \
