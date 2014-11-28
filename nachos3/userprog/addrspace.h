@@ -19,6 +19,7 @@
 #include "syscall.h"
 #ifdef CHANGED
 #include "memManager.h"
+#include "synchdisk.h"
 #endif
 
 #define UserStackSize		1024 	// increase this as necessary!
@@ -26,6 +27,23 @@
 #ifdef CHANGED
 class MemoryManager;
 class SynchDisk;
+
+class PageInfo {
+  public:
+    int virtualPage;  	// The page number in virtual memory.
+    int physicalPage;  	// The page number in real memory (relative to the
+			//  start of "mainMemory"
+    int diskPage;
+    bool valid;         // If this bit is set, the translation is ignored.
+			// (In other words, the entry hasn't been initialized.)
+    bool readOnly;	// If this bit is set, the user program is not allowed
+			// to modify the contents of the page.
+    bool use;           // This bit is set by the hardware every time the
+			// page is referenced or modified.
+    bool dirty;         // This bit is set by the hardware every time the
+			// page is modified.
+
+};
 #endif
 
 class PageInfo {
@@ -61,11 +79,11 @@ class AddrSpace {
 
 #ifdef CHANGED
     PageInfo* getPageTable(); // in order to get access to the page table
-		AddrSpace Fork(); // to be implemented later
+    AddrSpace Fork(); // to be implemented later
     void PrintRegisters(); //just a function for debugging
     int getFail();
     int NumPages;
-		int MaxVirtualAddress;
+    int MaxVirtualAddress;
     PageInfo *pageTable;	// how we keep track of memory
     unsigned int numPages;		// Number of pages in the virtual 
 															// address space		

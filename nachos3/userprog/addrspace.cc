@@ -22,15 +22,12 @@
 #include <new>
 
 #ifdef CHANGED
-BitMap * bitmap;
-
-BitMap *diskMap;
-SynchDisk *disk;
-
+extern BitMap * diskmap;
+extern SynchDisk * disk;
 // Returns available physical address
 int
-getPhysPageNum() {
-	return bitmap->Find();
+getDiskPageNum() {
+	return diskmap->Find();
 }
 #endif
 
@@ -82,7 +79,6 @@ AddrSpace::AddrSpace(OpenFile *executable)
     unsigned int i;
 #endif
     
-    if (bitmap == NULL) bitmap = new(std::nothrow) BitMap(NumPhysPages);
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
@@ -110,7 +106,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     // TODO
     // need to get rid of the assert and make sure that 
     // the system does not stop when we run a program that is too big.
-    if ((unsigned int) bitmap->NumClear() < numPages) {
+    if ((unsigned int) diskmap->NumClear() < numPages) {
       numPages = 0;
       fail = 1;
       return;
@@ -126,7 +122,6 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
     //NumPages = numPages; // set global access for TLB management
     //memManager = new(std::nothrow) MemoryManager(machine);
-    int physAddr;
     memManager = new(std::nothrow) MemoryManager(machine);
     
 //#ifndef USE_TLB
@@ -135,9 +130,10 @@ AddrSpace::AddrSpace(OpenFile *executable)
     // int zeros[PageSize] = {0};
     pageTable = new(std::nothrow) PageInfo[numPages];
     for (unsigned int i = 0; i < numPages; i++) {
-      pageTable[i].virtualPage = i;
-      physPage = getPhysPageNum();
+      pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+      physPage = -1;
       pageTable[i].physicalPage = physPage;
+      pageTable[i].diskPage = getDiskPageNum();
       pageTable[i].valid = true;
       pageTable[i].use = false;
       pageTable[i].dirty = false;
@@ -145,15 +141,29 @@ AddrSpace::AddrSpace(OpenFile *executable)
       // a separate page, we could set its 		
       // pages to be read-only
 
-
-      memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
-      bzero(machine->mainMemory + physAddr, PageSize);
+      //      memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
+      //bzero(machine->mainMemory + physAddr, PageSize);
 
     }
     //    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
     
     
     //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
+    int i = 0;
+    if (noffH.code.size > 0 ) {
+      char *buffer = (char *) malloc(sizeof(char) * (noffH.code.size + noffH.initData.size));
+      int j = noffH.code.size;
+      executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
+      if (noffH.initData.size > 0) {
+	executable->ReadAt(&buffer[j], noffH.initData.size, noffH.initData.inFileAddr);
+      }
+      for (j = 0; j < (noffH.code.size + noffH.initData.size); j += 128, i++) {
+	disk->WriteSector(pageTable[i].diskPage, &buffer[j]);
+      }
+      delete buffer;
+    }
+      
+    /*
     if (noffH.code.size > 0) {
       DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
 	    noffH.code.virtualAddr, noffH.code.size);
@@ -177,7 +187,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
 	memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
       }
       delete buffer;
-    }	
+      }	*/
     //fprintf(stderr, "All memeory pre-allocation done\n");
 #endif
     
@@ -193,13 +203,14 @@ AddrSpace::~AddrSpace()
 #ifdef CHANGED
   if (!fail) {
   for (unsigned int i = 0; i < numPages; i++){
-    //printf("%d\n", pageTable[i].physicalPage);
-    bitmap->Clear(pageTable[i].physicalPage);
+    //    printf("%d\n", pageTable[i].diskPage);
+    diskmap->Clear(pageTable[i].diskPage);
   }
   
   //#endif
   //#ifndef USE_TLB
-   delete pageTable;
+   delete [] pageTable;
+   delete memManager;
   }
 #endif
 }
@@ -292,8 +303,7 @@ void AddrSpace::RestoreState()
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 
-PageInfo*
-AddrSpace::getPageTable() {
+PageInfo *AddrSpace::getPageTable() {
 	return pageTable;
 }
 #endif

@@ -63,11 +63,121 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 
+int commutator = 0;
+struct PhysPageDesc{
+  int vpn;
+  int diskpage;
+  bool valid;
+  bool dirty;
+  AddrSpace * space;
+  Lock *pageLock = new(std::nothrow) Lock("lock for this page");
+}physPageDesc[NumPhysPages];
 // The SynchConsole acts as a wrapper around the Console Singleton
 SynchConsole *synchConsole;
 
+extern SynchDisk * disk;
+
 // Lock to ensure mutex throughout access to process data
 Lock * procLock = new(std::nothrow) Lock("global process lock");
+Lock * pageLock = new(std::nothrow) Lock("page table lock");
+
+//debug method
+void printppd() {
+  for (int i = 0; i < NumPhysPages; i++) {
+    printf("physical Page: %d diskPage: %d vpn: %d\n", i, physPageDesc[i].diskpage, physPageDesc[i].vpn);
+  }
+}
+void LoadPageToMemory(int vpn, AddrSpace *space);
+void
+LockPage(int vpn) {
+	int virtualPage = vpn / PageSize;
+	AddrSpace *space = currentThread->space;
+	PageInfo *table = space->getPageTable();
+	int physPage = table[virtualPage].physicalPage;
+	if ( physPage == -1) {
+	 	LoadPageToMemory(virtualPage , space);
+		physPage = table[virtualPage].physicalPage;
+	}
+
+	physPageDesc[physPage].pageLock->Acquire();
+}
+void 
+ReleasePage(int vpn) {
+	int virtualPage = vpn / PageSize;
+	AddrSpace *space = currentThread->space;
+	PageInfo *table = space->getPageTable();
+	int physPage = table[virtualPage].physicalPage;
+
+	physPageDesc[physPage].pageLock->Release();
+}
+
+int FindPageToReplace() {
+
+    for (int i = 0; i < NumPhysPages; i++) {
+      if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty){
+	return commutator;
+      }
+    commutator = (commutator +1) % NumPhysPages;
+    }
+    for (int i = 0; i < NumPhysPages; i++) {
+      if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty) {
+	//return dirty page
+	return commutator;
+      }
+      physPageDesc[commutator].valid = false;
+      commutator = (commutator + 1) % NumPhysPages;
+    }
+    return FindPageToReplace();
+}
+
+//load page from disk to physical memory
+
+void LoadPageToMemory(int vpn, AddrSpace * space) {
+  //if page in memory, return
+  // else get page from disk into memory.
+  //  printppd();
+  if (space->pageTable[vpn].physicalPage != -1) return;
+  int pageToReplace = FindPageToReplace();
+	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
+  for (int i = 0; i < TLBSize; i++) {
+    if (machine->tlb[i].physicalPage == pageToReplace) {
+      machine->tlb[i].valid = false;
+    }
+  }
+  int physAddr = pageToReplace * PageSize;
+
+  physPageDesc[pageToReplace].pageLock->Acquire();
+  if (physPageDesc[pageToReplace].dirty) {
+    int diskSector = physPageDesc[pageToReplace].diskpage;
+    char * buffer = new char[128];
+    for (int i = 0; i < PageSize; i++) {
+      buffer[i] = machine->mainMemory[physAddr + i];
+    }
+    disk->WriteSector(diskSector, buffer);
+    //write page back to disk
+    delete [] buffer;
+  }
+  if (physPageDesc[pageToReplace].space != NULL) {
+    AddrSpace * otherSpace = physPageDesc[pageToReplace].space;
+    otherSpace->pageTable[physPageDesc[pageToReplace].vpn].physicalPage = -1;
+  }
+  space->pageTable[vpn].physicalPage = pageToReplace;
+  //read page from disk into mainmemory[physAddr]
+  char *buffer = new char[128];
+  disk->ReadSector(space->pageTable[vpn].diskPage, buffer);
+  
+  for (int i = 0; i <PageSize; i++) {
+    machine->mainMemory[physAddr + i] = buffer[i];
+  }
+  delete [] buffer;
+  physPageDesc[pageToReplace].vpn = vpn;
+  physPageDesc[pageToReplace].diskpage = space->pageTable[vpn].diskPage;
+  physPageDesc[pageToReplace].valid = true;
+  physPageDesc[pageToReplace].dirty = true;
+  physPageDesc[pageToReplace].space = space;
+
+  physPageDesc[pageToReplace].pageLock->Release();
+}
 
 // Increments the program counters
 void incrementPC() {
@@ -96,19 +206,24 @@ void createNewFile() {
 	
 	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
+		LockPage(whence);
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
+		ReleasePage(whence);
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
+		
 		whence++;
 	}
 	stringarg[127] = '\0';
 		
-	if ( ! fileSystem->Create(stringarg, 0) ) // second arg not needed, dynamic file size
+	if ( ! fileSystem->Create(stringarg, 0) ) {// second arg not needed, dynamic file size
+	  delete [] stringarg;
 		return;
+	}
 	  //fprintf(stderr, "File Creation Failed. Either the file exists or there are memory problems\n");
-
+	delete [] stringarg;	
 }
 //-------------------------------------------------------------------------------------------
 //
@@ -130,10 +245,12 @@ void openFile() {
 
 	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
+		LockPage(whence);
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
+		ReleasePage(whence);
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 		whence++;
 	}
@@ -144,6 +261,7 @@ void openFile() {
 	if (file == NULL){
 		//fprintf(stderr, "Error during file opening\n");
 		machine->WriteRegister(2, -1);
+		delete [] stringarg;
 		return;
 	}
 	// init the bitmap if it has not been done already
@@ -166,10 +284,12 @@ void openFile() {
 	if (fileId == -1) {
 		//fprintf(stderr, "Too many files open\n");
 		machine->WriteRegister(2,-1);
+		delete [] stringarg;
 		return;
 	}
 	else
 		machine->WriteRegister(2, fileId);
+	delete [] stringarg;
 }
 //-----------------------------------------------------------------------------------------
 //
@@ -191,10 +311,12 @@ void writeFile() {
  	
 	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
+		LockPage(whence + i);
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			//fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
+		ReleasePage(whence + i);
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 	}
 	stringarg[size] = '\0';
@@ -216,12 +338,14 @@ void writeFile() {
 		if( !openFiles[file].used ){
 			//fprintf(stderr, "Requested file has not been opened!\n");
 			machine->WriteRegister(2, -1);
+			delete [] stringarg;
 			return;
 		}
 		OpenFile *fileToWrite = openFiles[file].openFile;
 		int numWrite = fileToWrite->Write( stringarg, size);
 		machine->WriteRegister(2, numWrite);
 	}	
+	delete [] stringarg;
 }
 //-----------------------------------------------------------------------------------------
 //
@@ -252,10 +376,12 @@ void readFile() {
 			readChar[i] = synchConsole->SynchGetChar();
 			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
 			  machine->WriteRegister(2, -1);
+			  delete [] readChar;
 				return;
 			}
 		} 	
 		machine->WriteRegister(2, numBytes);
+		delete [] readChar;
 	}
 	else if(!openFiles[file].used){
 		// error reading from closed or non-existing file
@@ -269,10 +395,13 @@ void readFile() {
 		OpenFile *fileToRead = openFiles[file].openFile;
 		int numRead = fileToRead->Read( buffer , numBytes );
 		for ( int i = 0 ; i < numBytes ; i++) {
+			LockPage(whence + i);
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
 			  machine->WriteRegister(2,-1);
+				ReleasePage(whence + i);
 				return;
 			}
+			ReleasePage(whence + i);
 		}
 		machine->WriteRegister(2 , numRead);
 	}
@@ -350,8 +479,12 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		tmp = argv[i];
 		//fprintf(stderr, "tmp is %s\n", tmp);
 		for ( int j = 0; j < len ; j++) {
+			LockPage(sp + j);
+		  LoadPageToMemory((sp + j) / PageSize, currentThread->space);
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
+			physPageDesc[physAddr/PageSize].dirty = 1;
+			ReleasePage(sp +j);
 		}
 		argvAddr[i] = sp;
 
@@ -363,13 +496,17 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	sp -= sizeof(int) * argcount;
 
 	for ( int i = 0 ; i < argcount; i++ ) {
+		LockPage(sp + i*4);
 		space->memManager->Translate(sp + i*4, &physAddr, 4, false, space);
 		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
+		physPageDesc[physAddr/PageSize].dirty = 1;
+		ReleasePage(sp + i*4);
 	}
 	// Fill reg 4 with number of arguments and reg 5 with address of first argument
 	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
 	machine->WriteRegister(StackReg, sp - 8);
+	
 }
 
 // ----------------------------------------------------------------------
@@ -416,10 +553,12 @@ void execFile() {
   int physAddr;
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
+		LockPage(whence + i);
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       machine->WriteRegister(2,-1);
 			return;
     }
+		ReleasePage(whence + i);
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
   filename[127] = '\0';
@@ -429,29 +568,37 @@ void execFile() {
 	char * tmp = new(std::nothrow) char[128];
 	int arg;
 	whence = machine->ReadRegister(5);
+	LockPage(whence);
 	space->memManager->ReadMem(whence, 4, &arg, space);
+	ReleasePage(whence);
 	int j = 0;
 	int size;
+	LockPage(whence);
 	while(arg != 0 && whence !=0)  {
 	  space->memManager->Translate(arg, &arg, 1, false, space);
 	  for ( int i = 0 ; i < 127 ; i++) {
-			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
+			if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
+				break;
+			}
 		}
 		tmp[127] = '\0';
 		size = sizeof(char) * (strlen(tmp)+1); // null terminator
 		argv[j] = new(std::nothrow) char[size];
 		strcpy(*(argv + j) , tmp);		
-		j++;		
+		j++;
+		ReleasePage(whence);		
 		whence += 4;
+		LockPage(whence);
 		space->memManager->ReadMem(whence, 4, &arg, space);
 	}
+	ReleasePage(whence);
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
 		args[i] = argv[i];
 	}
 	// set global data for prep
 	argc = j;
-
+	delete [] tmp;
   OpenFile *executable = fileSystem->Open(filename);
   
   if (executable == NULL) {
@@ -558,7 +705,7 @@ void exit() {
       }
     }	
   }
-
+  delete currentThread->openFilesMap;
   // get mutex on processinfo, because we don't want child
   // changing the status on the parent.
   procLock->Acquire();
@@ -595,6 +742,7 @@ void exit() {
   
   // toss the addrspace so we have memory to run more programs.
   delete currentThread->space;
+  currentThread->space = NULL;
   currentThread->Finish();
   
 }
@@ -642,15 +790,17 @@ HandleTLBFault(int vaddr)
   int i;
 
   stats->numTLBFaults++;
-	// need to make sure we are referencing within our address space
-	// Otherwise, kill the process
-	if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
-		// here we kill the process
-		// Return exit code of 1
-	        // indicating abnormal exit
-		machine->WriteRegister(4, 1);
-		exit();
-	}
+  // need to make sure we are referencing within our address space
+  // Otherwise, kill the process
+  if (vaddr < 0 || vaddr > currentThread->space->MaxVirtualAddress) {
+    // here we kill the process
+    // Return exit code of 1
+    // indicating abnormal exit
+    machine->WriteRegister(4, 1);
+    exit();
+  }
+
+  LoadPageToMemory(vpn, currentThread->space);
 
   // First, see if free TLB slot
   for (i=0; i<TLBSize; i++)
@@ -661,12 +811,9 @@ HandleTLBFault(int vaddr)
 	
   // Otherwise clobber random slot in TLB
 
-	// need to get correct physical page
-	PageInfo * table = currentThread->space->getPageTable();
-	// the ith entry is always the ith virtual page
-	
-	// need to see if the page we are looking for is in mainMemory or on disk
-
+  // need to get correct physical page
+  PageInfo * table = currentThread->space->getPageTable();
+  // the ith entry is always the ith virtual page
 
   machine->tlb[victim].virtualPage = vpn;
   machine->tlb[victim].physicalPage = table[vpn].physicalPage;

@@ -104,7 +104,7 @@ MemoryManager::Translate(int virtAddr, int* physAddr, int size, bool writing, Ad
 	unsigned int vpn, offset;
 	PageInfo *entry;
 	unsigned int pageFrame;
-	PageInfo *pageTable;
+	PageInfo*pageTable;
 	DEBUG('a', "\tTranslate 0x%x, %s: ", virtAddr, writing ? "write" : "Read");
 
 	// check for alignment errors

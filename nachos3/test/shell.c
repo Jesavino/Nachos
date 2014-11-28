@@ -6,7 +6,7 @@ main()
     SpaceId newProc;
     OpenFileId input = ConsoleInput;
     OpenFileId output = ConsoleOutput;
-    char prompt[2], ch, buffer[180];
+    char prompt[2], ch, buffer[128];
     int i, j, spaceCount;
     char *argv[10];
 
