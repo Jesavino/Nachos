@@ -87,12 +87,17 @@ void printppd() {
     printf("physical Page: %d diskPage: %d vpn: %d\n", i, physPageDesc[i].diskpage, physPageDesc[i].vpn);
   }
 }
+void LoadPageToMemory(int vpn, AddrSpace *space);
 void
 LockPage(int vpn) {
 	int virtualPage = vpn / PageSize;
 	AddrSpace *space = currentThread->space;
 	PageInfo *table = space->getPageTable();
 	int physPage = table[virtualPage].physicalPage;
+	if ( physPage == -1) {
+	 	LoadPageToMemory(virtualPage , space);
+		physPage = table[virtualPage].physicalPage;
+	}
 
 	physPageDesc[physPage].pageLock->Acquire();
 }
@@ -206,8 +211,9 @@ void createNewFile() {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
-		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
 		ReleasePage(whence);
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;		 
+		
 		whence++;
 	}
 	stringarg[127] = '\0';
@@ -244,8 +250,8 @@ void openFile() {
 			//fprintf(stderr, "Bad Translation\n");
 			break;
 		}
-		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 		ReleasePage(whence);
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 		whence++;
 	}
 	stringarg[127] = '\0';
@@ -310,8 +316,8 @@ void writeFile() {
 			//fprintf(stderr, "Error in Write Translation\n");
 			break;
 		}
-		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 		ReleasePage(whence + i);
+		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
 	}
 	stringarg[size] = '\0';
 
@@ -392,6 +398,7 @@ void readFile() {
 			LockPage(whence + i);
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
 			  machine->WriteRegister(2,-1);
+				ReleasePage(whence + i);
 				return;
 			}
 			ReleasePage(whence + i);
@@ -472,10 +479,12 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		tmp = argv[i];
 		//fprintf(stderr, "tmp is %s\n", tmp);
 		for ( int j = 0; j < len ; j++) {
+			LockPage(sp + j);
 		  LoadPageToMemory((sp + j) / PageSize, currentThread->space);
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
 			physPageDesc[physAddr/PageSize].dirty = 1;
+			ReleasePage(sp +j);
 		}
 		argvAddr[i] = sp;
 
@@ -487,9 +496,11 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	sp -= sizeof(int) * argcount;
 
 	for ( int i = 0 ; i < argcount; i++ ) {
+		LockPage(sp + i*4);
 		space->memManager->Translate(sp + i*4, &physAddr, 4, false, space);
 		*(unsigned int *) &machine->mainMemory[physAddr] = WordToMachine((unsigned int) argvAddr[i]);
 		physPageDesc[physAddr/PageSize].dirty = 1;
+		ReleasePage(sp + i*4);
 	}
 	// Fill reg 4 with number of arguments and reg 5 with address of first argument
 	machine->WriteRegister(4, argc);
@@ -542,10 +553,12 @@ void execFile() {
   int physAddr;
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
+		LockPage(whence + i);
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       machine->WriteRegister(2,-1);
 			return;
     }
+		ReleasePage(whence + i);
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
   filename[127] = '\0';
@@ -555,22 +568,30 @@ void execFile() {
 	char * tmp = new(std::nothrow) char[128];
 	int arg;
 	whence = machine->ReadRegister(5);
+	LockPage(whence);
 	space->memManager->ReadMem(whence, 4, &arg, space);
+	ReleasePage(whence);
 	int j = 0;
 	int size;
+	LockPage(whence);
 	while(arg != 0 && whence !=0)  {
 	  space->memManager->Translate(arg, &arg, 1, false, space);
 	  for ( int i = 0 ; i < 127 ; i++) {
-			if((tmp[i] = machine->mainMemory[arg+i]) == '\0') break;
+			if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
+				break;
+			}
 		}
 		tmp[127] = '\0';
 		size = sizeof(char) * (strlen(tmp)+1); // null terminator
 		argv[j] = new(std::nothrow) char[size];
 		strcpy(*(argv + j) , tmp);		
-		j++;		
+		j++;
+		ReleasePage(whence);		
 		whence += 4;
+		LockPage(whence);
 		space->memManager->ReadMem(whence, 4, &arg, space);
 	}
+	ReleasePage(whence);
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
 		args[i] = argv[i];
