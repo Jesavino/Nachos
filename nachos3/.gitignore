@@ -62,3 +62,7 @@ test4/share
 test4/sharedfile
 test4/sharekid
 synchdisk
+test/qsort
+test/qmatmult
+test/vmtorture
+test/Xkid

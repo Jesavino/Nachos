@@ -36,7 +36,7 @@ CFLAGS = -G 0 -c $(INCDIR) -DCHANGED -nostartfiles
 
 all: halt shell matmult sort hellocons fromcons hellofile fileio testfy testexec bogus2\
 	parent kid cat cp argtest argkid deepexec kid4 kid5 wideexec widekid1 widekid2\
-	widekid3 bogus1
+	widekid3 bogus1 Xkid qmatmult qsort vmtorture
 
 start.o: start.s ../userprog/syscall.h
 	$(CPP) $(CPPFLAGS) start.s > strt.s
@@ -192,4 +192,28 @@ cat.o: cat.c
 cat: cat.o start.o
 	$(LD) $(LDFLAGS) start.o cat.o -o cat.coff
 	../bin/coff2noff cat.coff cat
+
+Xkid.o: Xkid.c
+	$(CC) $(CFLAGS) -c Xkid.c
+Xkid: Xkid.o start.o
+	$(LD) $(LDFLAGS) start.o Xkid.o -o Xkid.coff
+	../bin/coff2noff Xkid.coff Xkid
+
+qmatmult.o: qmatmult.c
+	$(CC) $(CFLAGS) -c qmatmult.c
+qmatmult: qmatmult.o start.o
+	$(LD) $(LDFLAGS) start.o qmatmult.o -o qmatmult.coff
+	../bin/coff2noff qmatmult.coff qmatmult
+
+qsort.o: qsort.c
+	$(CC) $(CFLAGS) -c qsort.c
+qsort: qsort.o start.o
+	$(LD) $(LDFLAGS) start.o qsort.o -o qsort.coff
+	../bin/coff2noff qsort.coff qsort
+
+vmtorture.o: vmtorture.c
+	$(CC) $(CFLAGS) -c vmtorture.c
+vmtorture: vmtorture.o start.o
+	$(LD) $(LDFLAGS) start.o vmtorture.o -o vmtorture.coff
+	../bin/coff2noff vmtorture.coff vmtorture
 

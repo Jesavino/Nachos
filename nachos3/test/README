@@ -1,26 +1,24 @@
 Source File         Desired Behavior
 ===========         ================
-bogus2.c            Program shouldn't even start to execute,
-                    but no ASSERT violation should happen.
+matmult.c           Make sure NumPhysPages is set to 32
+                    in machine/machine.h. This program
+                    is then too big to fit in RAM, and
+                    will exercise your VM system.
 
-parent.c            A 2-process system: parent Exec()s
-kid.c               kid and Join()s kid when it Exit()s.
-                    Parent should get the Exit status value
-                    from kid. 
+                    Intended to be run stand-alone (it
+                    issues a Halt() after it's output).
 
-wideexec.c          Wideexec Execs three kids and waits
-widekid1.c          for them to terminate. May want to
-widekid2.c          kick up NumPhysPages in machine.h
-widekid3.c          to run this.
+                    After this runs standalone, change
+                    the Halt() to an Exit(0) and run
+                    it under your shell.
 
-deepexec.c          The deepexec program Execs kid4 and waits
-kid4.c              for it. The kid4 program execs kid5 and
-kid5.c              waits for it.
-
-toobig.c            Rigged so that the Exec() in toobig should
-kid6.c              fail. See comments in toobig.c for expected
-                    behavior/output.
-
-argtest.c           The argtest program Exec()s argkid, passing
-argkid.c            2 arguments. Note that this requires the
-                    Exec(char *, char *[], int) prototype.
+vmtorture.c         A system of process to really beat
+Xkid.c              hell out of your VM implementation.
+qmatmult.c          vmtorture fires up a "quiet" matmult
+qsort.c             that doesn't do any console output,
+                    a quiet sort, and 5 instances of Xkid.
+                    An Xkid is given a single char (A, B,
+                    C, D, and E) as its argument. It then
+                    outputs 100 copies of the argument to
+                    the console. Should see lots of inter-
+                    leaving of the letters.
