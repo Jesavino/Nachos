@@ -193,6 +193,17 @@ bool Lock::isHeldByCurrentThread(){
 }
 
 //----------------------------------------------------------------------
+// Lock::isLocked
+//     returns whether the lock is acquired
+//----------------------------------------------------------------------
+
+bool Lock::isLocked(){
+  if (threadWithLock != NULL)
+    return true;
+  return false;
+}
+
+//----------------------------------------------------------------------
 // Condition::condition
 //     Initializes a Condition, so that it can be used for synchronization
 //----------------------------------------------------------------------

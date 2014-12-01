@@ -99,6 +99,7 @@ LockPage(int vpn) {
 		physPage = table[virtualPage].physicalPage;
 	}
 
+	physPageDesc[physPage].valid = true;
 	physPageDesc[physPage].pageLock->Acquire();
 }
 void 
@@ -112,12 +113,11 @@ ReleasePage(int vpn) {
 }
 
 int FindPageToReplace() {
-  //  pageLock->Acquire();
     for (int i = 0; i < NumPhysPages; i++) {
       if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty){
 	int val = commutator;
 	commutator = (commutator +1) % NumPhysPages;
-	//	pageLock->Release();
+	if (physPageDesc[commutator].pageLock->isLocked()) continue;
 	return val;
       }
     commutator = (commutator +1) % NumPhysPages;
@@ -127,13 +127,12 @@ int FindPageToReplace() {
 	//return dirty page
 	int val = commutator;
 	commutator = (commutator +1) % NumPhysPages;
-	//pageLock->Release();
+	if (physPageDesc[commutator].pageLock->isLocked()) continue;
 	return val;
       }
       physPageDesc[commutator].valid = false;
       commutator = (commutator + 1) % NumPhysPages;
     }
-    // pageLock->Release();
     return FindPageToReplace();
 }
 
@@ -144,9 +143,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   // else get page from disk into memory.
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
-  pageLock->Acquire();
   int pageToReplace = FindPageToReplace();
-  pageLock->Release();
 	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
@@ -213,7 +210,7 @@ void createNewFile() {
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 	AddrSpace *space = currentThread->space;
-	
+	pageLock->Acquire();
 	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
 		LockPage(whence);
@@ -227,7 +224,8 @@ void createNewFile() {
 		whence++;
 	}
 	stringarg[127] = '\0';
-		
+	
+	pageLock->Release();
 	if ( ! fileSystem->Create(stringarg, 0) ) {// second arg not needed, dynamic file size
 	  delete [] stringarg;
 		return;
@@ -252,7 +250,7 @@ void openFile() {
 	DEBUG('a', "Opening file.\n");
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
-
+	pageLock->Acquire();
 	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
 		LockPage(whence);
@@ -268,6 +266,8 @@ void openFile() {
 
 	// Open the file and make sure it opened properly
 	OpenFile *file = fileSystem->Open(stringarg);
+	pageLock->Release();
+
 	if (file == NULL){
 		//fprintf(stderr, "Error during file opening\n");
 		machine->WriteRegister(2, -1);
@@ -312,19 +312,21 @@ void openFile() {
 // ----------------------------------------------------------------------------------------					
 void writeFile() {
 	int physAddr;
+	pageLock->Acquire();
 	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Writing to a file\n");
 	
 	int size = machine->ReadRegister(5);
 	whence = machine->ReadRegister(4);
 	stringarg = new(std::nothrow) char[size + 1];
- 	
+
 	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
 		LockPage(whence + i);
 		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
 			//fprintf(stderr, "Error in Write Translation\n");
-			break;
+		  ReleasePage(whence + i);
+		  break;
 		}
 		ReleasePage(whence + i);
 		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
@@ -332,6 +334,7 @@ void writeFile() {
 	stringarg[size] = '\0';
 
 	int file = machine->ReadRegister(6);
+	pageLock->Release();
 	// If the file specified is the console
 	if ( file == ConsoleOutput ) {
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
@@ -378,7 +381,6 @@ void readFile() {
 	}
 	int numBytes = machine->ReadRegister(5);
 	whence =  machine->ReadRegister(4);	
-
 	if (file == ConsoleInput) {
 		char * readChar = new(std::nothrow) char[128];
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
@@ -404,14 +406,18 @@ void readFile() {
 		char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 		OpenFile *fileToRead = openFiles[file].openFile;
 		int numRead = fileToRead->Read( buffer , numBytes );
+		pageLock->Acquire();
+
 		for ( int i = 0 ; i < numBytes ; i++) {
 			LockPage(whence + i);
 			if ( !space->memManager->WriteMem(whence + i , 1, (int) buffer[i],space)) {
 			  machine->WriteRegister(2,-1);
 				ReleasePage(whence + i);
+				pageLock->Release();
 				return;
 			}
 			ReleasePage(whence + i);
+			pageLock->Release();
 		}
 		machine->WriteRegister(2 , numRead);
 	}
@@ -483,6 +489,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 	int physAddr;
 	char * tmp;
 	sp = machine->ReadRegister(StackReg);
+	pageLock->Acquire();
 	for ( int i = 0 ; i < argcount ; i++) {
 		len = strlen(argv[i]) + 1;
 		sp -= len;
@@ -490,7 +497,6 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		//fprintf(stderr, "tmp is %s\n", tmp);
 		for ( int j = 0; j < len ; j++) {
 			LockPage(sp + j);
-		  LoadPageToMemory((sp + j) / PageSize, currentThread->space);
 			space->memManager->Translate(sp + j, &physAddr, 1, false, space);
 			machine->mainMemory[physAddr] = tmp[j];
 			physPageDesc[physAddr/PageSize].dirty = 1;
@@ -512,6 +518,7 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 		physPageDesc[physAddr/PageSize].dirty = 1;
 		ReleasePage(sp + i*4);
 	}
+	pageLock->Release();
 	// Fill reg 4 with number of arguments and reg 5 with address of first argument
 	machine->WriteRegister(4, argc);
 	machine->WriteRegister(5, sp);
@@ -562,45 +569,49 @@ void execFile() {
   AddrSpace *space = currentThread->space;
   int physAddr;
 	// Address translation
+  pageLock->Acquire();
   for ( int i = 0 ; i < 127 ; i++) {
-		LockPage(whence + i);
+    LockPage(whence + i);
+    
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       machine->WriteRegister(2,-1);
-			return;
+      ReleasePage(whence + i);
+      pageLock->Release();
+      return;
     }
-		ReleasePage(whence + i);
+    ReleasePage(whence + i);
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
   filename[127] = '\0';
 
-	// Get arguments from the kernel
-	char * argv[10] = {NULL};
-	char * tmp = new(std::nothrow) char[128];
-	int arg;
-	whence = machine->ReadRegister(5);
-	LockPage(whence);
-	space->memManager->ReadMem(whence, 4, &arg, space);
-	ReleasePage(whence);
-	int j = 0;
-	int size;
-	LockPage(whence);
-	while(arg != 0 && whence !=0)  {
-	  space->memManager->Translate(arg, &arg, 1, false, space);
-	  for ( int i = 0 ; i < 127 ; i++) {
-			if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
-				break;
-			}
-		}
-		tmp[127] = '\0';
-		size = sizeof(char) * (strlen(tmp)+1); // null terminator
-		argv[j] = new(std::nothrow) char[size];
-		strcpy(*(argv + j) , tmp);		
-		j++;
-		ReleasePage(whence);		
-		whence += 4;
-		LockPage(whence);
-		space->memManager->ReadMem(whence, 4, &arg, space);
-	}
+  // Get arguments from the kernel
+  char * argv[10] = {NULL};
+  char * tmp = new(std::nothrow) char[128];
+  int arg;
+  whence = machine->ReadRegister(5);
+  LockPage(whence);
+  space->memManager->ReadMem(whence, 4, &arg, space);
+  ReleasePage(whence);
+  int j = 0;
+  int size;
+  LockPage(whence);
+  while(arg != 0 && whence !=0)  {
+    space->memManager->Translate(arg, &arg, 1, false, space);
+    for ( int i = 0 ; i < 127 ; i++) {
+      if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
+	break;
+      }
+    }
+    tmp[127] = '\0';
+    size = sizeof(char) * (strlen(tmp)+1); // null terminator
+    argv[j] = new(std::nothrow) char[size];
+    strcpy(*(argv + j) , tmp);		
+    j++;
+    ReleasePage(whence);		
+    whence += 4;
+    LockPage(whence);
+    space->memManager->ReadMem(whence, 4, &arg, space);
+  }
 	ReleasePage(whence);
 	for (int i  = 0 ; i < 10 ; i++) {
 		if( argv[i] == NULL) break;
@@ -613,6 +624,7 @@ void execFile() {
   
   if (executable == NULL) {
     machine->WriteRegister(2, -1);
+    pageLock->Release();
     return;
   }
 
@@ -623,6 +635,7 @@ void execFile() {
     // and return -1
     delete newSpace;
     machine->WriteRegister(2, -1);
+    pageLock->Release();
     return;
   }
 
@@ -655,6 +668,7 @@ void execFile() {
   argSpace = thread->space;
   thread->Fork(execThread, 0);
 	
+  pageLock->Release();
   delete executable;			// close file
 }  
 // ----------------------------------------------------------------------
