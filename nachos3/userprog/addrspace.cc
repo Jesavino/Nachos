@@ -210,6 +210,7 @@ AddrSpace::~AddrSpace()
   //#endif
   //#ifndef USE_TLB
    delete [] pageTable;
+   pageTable = NULL;
    delete memManager;
   }
 #endif

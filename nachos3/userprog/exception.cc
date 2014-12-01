@@ -112,21 +112,28 @@ ReleasePage(int vpn) {
 }
 
 int FindPageToReplace() {
-
+  //  pageLock->Acquire();
     for (int i = 0; i < NumPhysPages; i++) {
       if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty){
-	return commutator;
+	int val = commutator;
+	commutator = (commutator +1) % NumPhysPages;
+	//	pageLock->Release();
+	return val;
       }
     commutator = (commutator +1) % NumPhysPages;
     }
     for (int i = 0; i < NumPhysPages; i++) {
       if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty) {
 	//return dirty page
-	return commutator;
+	int val = commutator;
+	commutator = (commutator +1) % NumPhysPages;
+	//pageLock->Release();
+	return val;
       }
       physPageDesc[commutator].valid = false;
       commutator = (commutator + 1) % NumPhysPages;
     }
+    // pageLock->Release();
     return FindPageToReplace();
 }
 
@@ -137,7 +144,9 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   // else get page from disk into memory.
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
+  pageLock->Acquire();
   int pageToReplace = FindPageToReplace();
+  pageLock->Release();
 	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
@@ -159,7 +168,8 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   }
   if (physPageDesc[pageToReplace].space != NULL) {
     AddrSpace * otherSpace = physPageDesc[pageToReplace].space;
-    otherSpace->pageTable[physPageDesc[pageToReplace].vpn].physicalPage = -1;
+    if (otherSpace->pageTable != NULL)
+      otherSpace->pageTable[physPageDesc[pageToReplace].vpn].physicalPage = -1;
   }
   space->pageTable[vpn].physicalPage = pageToReplace;
   //read page from disk into mainmemory[physAddr]
@@ -708,6 +718,7 @@ void exit() {
   delete currentThread->openFilesMap;
   // get mutex on processinfo, because we don't want child
   // changing the status on the parent.
+  pageLock->Acquire();
   procLock->Acquire();
   ProcessInfo * child;
 
@@ -739,10 +750,18 @@ void exit() {
   
   // release the mutex on the processinfo
   procLock->Release();
+
+  // remove address space of any page in memory
+  for (int i = 0; i < NumPhysPages; i++) {
+    if (physPageDesc[i].space == currentThread->space) {
+      physPageDesc[i].space = NULL;
+    }
+  }
   
   // toss the addrspace so we have memory to run more programs.
   delete currentThread->space;
   currentThread->space = NULL;
+  pageLock->Release();
   currentThread->Finish();
   
 }
@@ -912,6 +931,11 @@ ExceptionHandler(ExceptionType which)
 	    joinProcess();
 	    incrementPC();
 	    break;
+
+	    //	  case SC_CheckPoint:
+	    // break;
+	    //	    checkpoint();
+	    
 
 	    /*	  case SC_Fork:
 
