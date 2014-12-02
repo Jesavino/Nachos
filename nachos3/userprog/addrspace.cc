@@ -217,9 +217,11 @@ AddrSpace::AddrSpace(OpenFile *cp, int offset){
   
   memManager = new(std::nothrow) MemoryManager(machine);
 
-  MaxVirtualAddress = cp->Length() - 32;
+  MaxVirtualAddress = cp->Length() - 20;
   fail = 0;
   int physPage;
+  numPages = divRoundUp(MaxVirtualAddress, PageSize);
+
   pageTable = new(std::nothrow) PageInfo[numPages];
   for (unsigned int i = 0; i < numPages; i++) {
     pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
