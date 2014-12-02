@@ -64,6 +64,8 @@ class AddrSpace {
     void RestoreState();		// info on a context switch
 
 #ifdef CHANGED
+    void InitRegisters(int pcreg, int nextpc, int stackp);
+
     PageInfo* getPageTable(); // in order to get access to the page table
     void PrintRegisters(); //just a function for debugging
     int getFail();

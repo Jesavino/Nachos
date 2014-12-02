@@ -82,6 +82,11 @@ extern SynchDisk * disk;
 Lock * procLock = new(std::nothrow) Lock("global process lock");
 Lock * pageLock = new(std::nothrow) Lock("page table lock");
 
+int cpnum;
+int pcreg;
+int nextpcreg;
+int stackp;
+
 //debug method
 void printppd() {
   for (int i = 0; i < NumPhysPages; i++) {
@@ -310,6 +315,7 @@ void openFile() {
 //
 // ----------------------------------------------------------------------------------------					
 void writeFile() {
+  currentThread->space->PrintRegisters();
 	int physAddr;
 	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Writing to a file\n");
@@ -526,10 +532,24 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 // ---------------------------------------------------------------------
 
 void execThread(int arg) {
-  
-  currentThread->space->InitRegisters();		// set the initial register values
-  currentThread->space->RestoreState();		// load page table register
+  currentThread->space->PrintRegisters();
 
+  currentThread->space->InitRegisters();
+
+  currentThread->space->PrintRegisters();
+  
+  machine->WriteRegister(PCReg, pcreg);	
+    // Need to also tell MIPS where next instruction is, because
+    // of branch delay possibility
+  machine->WriteRegister(NextPCReg, nextpcreg);
+   // Set the stack register to the end of the address space, where we
+   // allocated the stack; but subtract off a bit, to make sure we don't
+   // accidentally reference off the end!
+  machine->WriteRegister(StackReg, stackp);
+
+  incrementPC();
+  currentThread->space->PrintRegisters();
+  currentThread->space->RestoreState();		// load page table register
   // If there were args, prep the stack here
   if(argc) 
     prepStack(argc, args, argSpace);
@@ -620,10 +640,9 @@ void execFile() {
 
 
   //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
-  int cpnum;
-  int pcreg;
-  int nextpcreg;
-  int stackp;
+  pcreg = 0;
+  nextpcreg = 4;
+  stackp = 0;
   executable->ReadAt((char*)&cpnum, sizeof(int), 0);
   if (cpnum == CPNUMBER) {
     argc = 0;
@@ -631,7 +650,6 @@ void execFile() {
     executable->ReadAt((char *) &nextpcreg, sizeof(int), 12);
     executable->ReadAt((char *) &stackp, sizeof(int), 16);
     newSpace = new(std::nothrow) AddrSpace(executable, 20);
-    printf("PCReg: %d, NEXT: %d, STACK: %d\n", pcreg, nextpcreg, stackp);
   }
 
   // create a new addressSpace to be given to new thread
@@ -673,6 +691,7 @@ void execFile() {
   // calling thread given this threads pid
   machine->WriteRegister(2, thread->pid);
   argSpace = thread->space;
+
   thread->Fork(execThread, 0);
 	
   delete executable;			// close file
@@ -815,6 +834,7 @@ void checkPoint() {
   whence = machine->ReadRegister(4);
   // get char * address from information at argv, then argv+1 etc.
   AddrSpace *space = currentThread->space;
+  space->PrintRegisters();
   int physAddr;
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
@@ -847,13 +867,12 @@ void checkPoint() {
   //pcreg, nextpcreg, and stackpointer need to be saved
   int cpNum = CPNUMBER;
   cp->Write((char *) &cpNum, 8);
-  int pcreg = machine->ReadRegister(PCReg);
-  int nextpc = machine->ReadRegister(NextPCReg);
-  int stackp = machine->ReadRegister(StackReg);
-  printf("PCReg: %d, NEXT: %d, STACK: %d\n", pcreg, nextpc, stackp);
+  pcreg = machine->ReadRegister(PCReg);
+  nextpcreg = machine->ReadRegister(NextPCReg);
+  stackp = machine->ReadRegister(StackReg);
 
   cp->Write((char*)&pcreg, sizeof(int));
-  cp->Write((char*)&nextpc, sizeof(int));
+  cp->Write((char*)&nextpcreg, sizeof(int));
   cp->Write((char*)&stackp, sizeof(int));
   //wrap in a for loop, buffer is contents of page[i]
   char buffer[128];

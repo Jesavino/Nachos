@@ -275,13 +275,15 @@ AddrSpace::~AddrSpace()
    pageTable = NULL;
    delete memManager;
   }
-#endif
 }
 
 
 int AddrSpace::getFail() {
   return fail;
 }
+
+#endif
+
 //----------------------------------------------------------------------
 // AddrSpace::InitRegisters
 // 	Set the initial values for the user-level register set.
