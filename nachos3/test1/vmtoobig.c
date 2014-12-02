@@ -1,29 +1,39 @@
-/* atomicfile2.c
+/* vmtoobig.c
  *
- * Kid in the test of atomic file output.
+ * Parent execs kid which is too big. Should survive.
  *
  */
 
 #include "syscall.h"
 
-#define ITERATIONS 20
-#define DELAY 10000
-
-/* Will adjust SHAREDFD if needed. */
-
-#define SHAREDFD 2
-
 int
 main()
 {
-  int i, j, k;
 
-  for (i=0; i < ITERATIONS; i++) {
-    k = 0;
-    for (j=0; j < DELAY; j++) k++;
-    Write("BBBBB", 5, SHAREDFD);
+  SpaceId kid;
+  int joinval;
+  char *args[2];
+
+  args[0] = "huge";
+  args[1] = (char *)0;
+
+  if ((kid = Exec("huge", args, 0)) == -1) {
+    prints("Exec() failed in PARENT\n");
+    Exit(16);
   }
-  Exit(0);
+  
+  prints("PARENT after exec; kid pid is ", ConsoleOutput);
+  printd((int)kid, ConsoleOutput);
+  prints("\n", ConsoleOutput);
+
+  prints("PARENT about to Join kid\n", ConsoleOutput);
+  joinval = Join(kid);
+  prints("PARENT off Join with value of ", ConsoleOutput);
+  printd(joinval, ConsoleOutput);
+  prints("\n", ConsoleOutput);
+
+  Halt();
+  /* not reached */
 }
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
@@ -38,7 +48,7 @@ OpenFileId file;
 
   p = s;
   while (*p++ != '\0') count++;
-  Write(s, count, file);  
+  Write(s, count, file);
 
 }
 
@@ -54,12 +64,12 @@ OpenFileId file;
   int i, pos=0, divisor=1000000000, d, zflag=1;
   char c;
   char buffer[11];
-  
+
   if (n < 0) {
     buffer[pos++] = '-';
     n = -n;
   }
-  
+
   if (n == 0) {
     Write("0",1,file);
     return;
@@ -77,8 +87,3 @@ OpenFileId file;
   }
   Write(buffer,pos,file);
 }
-
-
-
-
-

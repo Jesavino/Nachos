@@ -1,0 +1,87 @@
+OVERALL:
+
+
+                        CS 444/544
+         Nachos #3 (Multiprogrammed Virtual Memory)
+                         Fall 2014
+
+Part 1. VM [40 points]
+
+        System setup: NumPhysPages is 32
+                      NumTracks is 64 (SectorsPerTrack is 32)
+                      This means a primary memory of 32 frames on
+                      secondary storage of 2048 frames.
+
+	Test code is in the test1 subdirectory.
+
+1) [5 pts] Making sure you still have simple multiprogramming
+   These are the same programs as were run under Nachos #2. They don't
+   need VM to run, but your VM shouldn't have broken them.
+
+   a) [1 pts] halt
+
+   b) [2 pts] parent
+
+   c) [2 pts] argtest
+
+2) [15 pts] One very big program, matmult, run standalone. Bigger than primary
+   memory. (But not much to worry about in terms of concurrency in the
+   kernel.) Should produce the final result 25230.
+
+3) [5 pts] Maxexec from Nachos 2. Needs VM, and causes a bit of
+   concurrency in the kernel.
+
+4) [5 pts] Driver program vmtoobig tries to Exec a program (huge) which is too
+   big for VM. Should cause Exec() to fail gracefully, or should
+   execute the child, depending on how you implement VM. Cannot kill
+   your Nachos.
+
+5) [10 pts] A driver program (vmtorture) execs off:
+
+       - qsort: quiet sort
+       - qmatmult: quiet matmult
+       - Akid, Bkid, Ckid, Dkid, Ekid: each outputs 100 chars to
+         ConsoleOutput (Akid does 100 A's, etc.)
+
+   qsort and qmatmult impose a big computational load, and a large
+   demand for memory, on the system. The Xkids impose negligible
+   computational and memory load, but do lots of i/o. End result is a
+   lot of kernel-level concurrency, really stresses your VM
+   implementation and basic kernel concurrency control. Requires
+   working args, timeslicing, VM, and i/o.
+
+Part 2. Checkpointing [20 points]
+
+	System setup: same as above
+
+	Test code is in the test2 subdirectory.
+
+1) [10 pts] ckmatmult: matmult with a checkpoint taken at the 15th
+   iteration of the outermost loop. Allow the original program
+   to run to completion. The binary rematmult will Exec the checkpoint
+   file to restart the computation from the checkpoint. Tests basic
+   checkpointing in a relatively quiet system.
+
+2) [10 pts] ckpttorture: like vmtorture above, but the matmult
+   checkpoints at iteration 15 and terminates. The matmult is
+   reinstantiated from the checkpoint. Lots of concurrency to get in
+   the way of checkpointing and reinstantiation.
+
+3) If you handle open files as part of your checkpoint implementation,
+   make sure you let me know in your README. I will arrange a proper test.
+   (Note that this is NOT REQUIRED.)
+
+Part 3. Lazy Loading [20 points]
+
+	System setup: same as above
+
+	Test code is in the test3 subdirectory.
+
+   lazy1: program with large global array that is initialized. Not a lot
+   of opportunity for lazy loading, but provides a benchmark for page 
+   faults and disk i/o.
+
+   lazy2: same as lazy1, but a quick exit before initialization.
+
+   Compare faults and/or disk activity of the two programs. lazy2
+   should produce substantially less disk i/o.

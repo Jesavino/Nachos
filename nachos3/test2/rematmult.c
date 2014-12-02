@@ -1,36 +1,33 @@
-/* atomicconsole.c
+/* rematmult.c 
  *
- * Parent in the test of atomic console output.
+ *    Reinstantiate checkpoint file ck1. Should be matmult
+ *    at the 15th outer iteration.
  *
  */
 
 #include "syscall.h"
-
 #define NULL (void *)0
-
-#define ITERATIONS 20
-#define DELAY 10000
 
 int
 main()
 {
+  SpaceId restarted;
+  int joinval;
+  char *args[2];
 
-  SpaceId kid;
-  int joinval, i, j, k;
+  prints("REMATMULT begins\n\n", ConsoleOutput);
+  if ((restarted = Exec("ck1", NULL, 0)) == -1) {
+    prints("Bad reanimation; exec failed\n", ConsoleOutput);
+    Halt();
+  }
+  joinval = Join(restarted);
+  prints("\n\nREMATMULT after Join with value of ", ConsoleOutput);
+  printd(joinval, ConsoleOutput);
+  prints("\n\n", ConsoleOutput);
 
-  kid = Exec("atomicconsole2", NULL, 0);
-
-  for (i=0; i < ITERATIONS; i++) {
-    k = 0;
-    for (j=0; j < DELAY; j++) k++;
-      Write("AAAAA", 5, ConsoleOutput);
-    }
-
-    joinval = Join(kid);
-    
-    Exit(0);
-  /* not reached */
+  Halt();
 }
+
 
 /* Print a null-terminated string "s" on open file descriptor "file". */
 
@@ -44,7 +41,7 @@ OpenFileId file;
 
   p = s;
   while (*p++ != '\0') count++;
-  Write(s, count, file);  
+  Write(s, count, file);
 
 }
 
@@ -60,12 +57,12 @@ OpenFileId file;
   int i, pos=0, divisor=1000000000, d, zflag=1;
   char c;
   char buffer[11];
-  
+
   if (n < 0) {
     buffer[pos++] = '-';
     n = -n;
   }
-  
+
   if (n == 0) {
     Write("0",1,file);
     return;
@@ -83,8 +80,3 @@ OpenFileId file;
   }
   Write(buffer,pos,file);
 }
-
-
-
-
-
