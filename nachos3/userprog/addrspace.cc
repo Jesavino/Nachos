@@ -100,7 +100,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
     
 #ifdef CHANGED
 		// Set the maximum VA size possible for this addrspace
-		MaxVirtualAddress = numPages * PageSize;
+    MaxVirtualAddress = numPages * PageSize;
 
 
     // TODO
@@ -200,6 +200,58 @@ AddrSpace::AddrSpace(OpenFile *executable)
     
 }
 
+#ifdef CHANGED
+//----------------------------------------------------------------------
+// Alternate constructor for loading from a checkpoint.
+//----------------------------------------------------------------------
+
+AddrSpace::AddrSpace(OpenFile *cp, int offset){
+  /*    int NumPages;
+    int MaxVirtualAddress;
+    PageInfo *pageTable;	// how we keep track of memory
+    unsigned int numPages;		// Number of pages in the virtual 
+															// address space		
+    MemoryManager *memManager;
+    int fail;
+  */
+  
+  memManager = new(std::nothrow) MemoryManager(machine);
+
+  MaxVirtualAddress = cp->Length() - 32;
+  fail = 0;
+  int physPage;
+  pageTable = new(std::nothrow) PageInfo[numPages];
+  for (unsigned int i = 0; i < numPages; i++) {
+    pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
+    physPage = -1;
+    pageTable[i].physicalPage = physPage;
+    pageTable[i].diskPage = getDiskPageNum();
+    pageTable[i].valid = true;
+    pageTable[i].use = false;
+    pageTable[i].dirty = false;
+    pageTable[i].readOnly = false;  // if the code segment was entirely on 
+      // a separate page, we could set its 		
+      // pages to be read-only
+
+      //      memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
+      //bzero(machine->mainMemory + physAddr, PageSize);
+
+  }
+    //    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
+    
+  
+    //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
+  int i = 0;
+  char buffer[PageSize];
+  // j < size of executable or max virtual address
+  for ( int j = offset; j < cp->Length(); j += 128, i++) {
+    cp->ReadAt(buffer, PageSize, j);
+    disk->WriteSector(pageTable[i].diskPage, buffer);
+  }
+  
+}
+
+#endif
 //----------------------------------------------------------------------
 // AddrSpace::~AddrSpace
 // 	Dealloate an address space.  Nothing for now!
@@ -211,6 +263,7 @@ AddrSpace::~AddrSpace()
   if (!fail) {
   for (unsigned int i = 0; i < numPages; i++){
     //    printf("%d\n", pageTable[i].diskPage);
+    if (pageTable[i].diskPage != -1)
     diskmap->Clear(pageTable[i].diskPage);
   }
   
@@ -247,11 +300,9 @@ AddrSpace::InitRegisters()
 
     // Initial program counter -- must be location of "Start"
     machine->WriteRegister(PCReg, 0);	
-
     // Need to also tell MIPS where next instruction is, because
     // of branch delay possibility
     machine->WriteRegister(NextPCReg, 4);
-
    // Set the stack register to the end of the address space, where we
    // allocated the stack; but subtract off a bit, to make sure we don't
    // accidentally reference off the end!
@@ -303,6 +354,7 @@ void AddrSpace::RestoreState()
     machine->pageTable = pageTable;
     machine->pageTableSize = numPages;
 #endif
+
 }
 
 

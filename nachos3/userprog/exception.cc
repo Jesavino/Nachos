@@ -145,6 +145,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   // else get page from disk into memory.
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
+  stats->numPageFaults++;
   int pageToReplace = FindPageToReplace();
   physPageDesc[pageToReplace].pageLock = true;
 	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
@@ -612,16 +613,31 @@ void execFile() {
 	argc = j;
 	delete [] tmp;
   OpenFile *executable = fileSystem->Open(filename);
-
-  //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
-  
   if (executable == NULL) {
     machine->WriteRegister(2, -1);
     return;
   }
 
+
+  //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
+  int cpnum;
+  int pcreg;
+  int nextpcreg;
+  int stackp;
+  executable->ReadAt((char*)&cpnum, sizeof(int), 0);
+  if (cpnum == CPNUMBER) {
+    argc = 0;
+    executable->ReadAt((char *) &pcreg, sizeof(int), 8);
+    executable->ReadAt((char *) &nextpcreg, sizeof(int), 12);
+    executable->ReadAt((char *) &stackp, sizeof(int), 16);
+    newSpace = new(std::nothrow) AddrSpace(executable, 20);
+    printf("PCReg: %d, NEXT: %d, STACK: %d\n", pcreg, nextpcreg, stackp);
+  }
+
   // create a new addressSpace to be given to new thread
-  newSpace = new(std::nothrow) AddrSpace(executable);    
+  else {
+    newSpace = new(std::nothrow) AddrSpace(executable);    
+  }
   if (newSpace->getFail()) {
     // if address space failed for any reason, delete it
     // and return -1
@@ -828,7 +844,17 @@ void checkPoint() {
 
   }
   //if creating a checkpoint save it to disk and return 0
+  //pcreg, nextpcreg, and stackpointer need to be saved
+  int cpNum = CPNUMBER;
+  cp->Write((char *) &cpNum, 8);
+  int pcreg = machine->ReadRegister(PCReg);
+  int nextpc = machine->ReadRegister(NextPCReg);
+  int stackp = machine->ReadRegister(StackReg);
+  printf("PCReg: %d, NEXT: %d, STACK: %d\n", pcreg, nextpc, stackp);
 
+  cp->Write((char*)&pcreg, sizeof(int));
+  cp->Write((char*)&nextpc, sizeof(int));
+  cp->Write((char*)&stackp, sizeof(int));
   //wrap in a for loop, buffer is contents of page[i]
   char buffer[128];
   int numPages = space->numPages;
