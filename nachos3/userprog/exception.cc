@@ -88,6 +88,7 @@ void printppd() {
   }
 }
 void LoadPageToMemory(int vpn, AddrSpace *space);
+
 void
 LockPage(int vpn) {
 	int virtualPage = vpn / PageSize;
@@ -99,8 +100,8 @@ LockPage(int vpn) {
 		physPage = table[virtualPage].physicalPage;
 	}
 
-	physPageDesc[physPage].valid = true;
 	physPageDesc[physPage].pageLock->Acquire();
+	physPageDesc[physPage].valid = true;
 }
 void 
 ReleasePage(int vpn) {
@@ -144,6 +145,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
   int pageToReplace = FindPageToReplace();
+  physPageDesc[pageToReplace].pageLock->Acquire();
 	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
@@ -152,7 +154,6 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   }
   int physAddr = pageToReplace * PageSize;
 
-  physPageDesc[pageToReplace].pageLock->Acquire();
   if (physPageDesc[pageToReplace].dirty) {
     int diskSector = physPageDesc[pageToReplace].diskpage;
     char * buffer = new char[128];
@@ -205,12 +206,12 @@ void incrementPC() {
 //
 // ----------------------------------------------------------------------------
 void createNewFile() {
+	pageLock->Acquire();
 	int physAddr;
 	DEBUG('a', "Creating a new file.\n");
 	stringarg = new (std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
 	AddrSpace *space = currentThread->space;
-	pageLock->Acquire();
 	// Translate loop to get the file name. This is done byte by byte
 	for ( int i = 0 ; i < 127 ; i++) {
 		LockPage(whence);
@@ -245,12 +246,12 @@ void createNewFile() {
 //
 // -------------------------------------------------------------------------------------------					
 void openFile() {
+	pageLock->Acquire();
 	int physAddr;
 	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Opening file.\n");
 	stringarg = new(std::nothrow) char[128];
 	whence = machine->ReadRegister(4);
-	pageLock->Acquire();
 	// Translate byte by byte to get the filename to open
 	for ( int i = 0 ; i < 127 ; i++ ) {
 		LockPage(whence);
@@ -370,6 +371,8 @@ void writeFile() {
 //
 // -----------------------------------------------------------------------------------------
 void readFile() {
+  pageLock->Acquire();
+
 	DEBUG('a' , "Reading from File\n");
 	AddrSpace* space = currentThread->space;
 	int file = machine->ReadRegister(6);
@@ -377,6 +380,7 @@ void readFile() {
 	if (file < 0 || file > NumOpenFiles) {
 		//fprintf(stderr, "Invalid file read attempt\n");
 		machine->WriteRegister(2, -1);
+		pageLock->Release();
 		return;
 	}
 	int numBytes = machine->ReadRegister(5);
@@ -385,12 +389,13 @@ void readFile() {
 		char * readChar = new(std::nothrow) char[128];
 		if (synchConsole == NULL) synchConsole = new(std::nothrow) SynchConsole(NULL, NULL);
 		for( int i = 0 ; i < numBytes ; i++) {
-			readChar[i] = synchConsole->SynchGetChar();
-			if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
+		  readChar[i] = synchConsole->SynchGetChar();
+		  if ( ! space->memManager->WriteMem(whence + i , 1, (int) readChar[i], space)) {
 			  machine->WriteRegister(2, -1);
 			  delete [] readChar;
-				return;
-			}
+			  pageLock->Release();
+			  return;
+		  }
 		} 	
 		machine->WriteRegister(2, numBytes);
 		delete [] readChar;
@@ -406,7 +411,6 @@ void readFile() {
 		char * buffer = (char *) malloc( sizeof(char*) * numBytes );
 		OpenFile *fileToRead = openFiles[file].openFile;
 		int numRead = fileToRead->Read( buffer , numBytes );
-		pageLock->Acquire();
 
 		for ( int i = 0 ; i < numBytes ; i++) {
 			LockPage(whence + i);
@@ -417,10 +421,10 @@ void readFile() {
 				return;
 			}
 			ReleasePage(whence + i);
-			pageLock->Release();
 		}
 		machine->WriteRegister(2 , numRead);
 	}
+	pageLock->Release();
 }
 // ------------------------------------------------------------------------------------
 //
@@ -483,13 +487,13 @@ void yieldProgram() {
 // 
 // -------------------------------------------------------------------------------
 void prepStack(int argcount, char **argv, AddrSpace *space) {
+	pageLock->Acquire();
 	int sp;
 	int len;
 	int argvAddr[argcount];
 	int physAddr;
 	char * tmp;
 	sp = machine->ReadRegister(StackReg);
-	pageLock->Acquire();
 	for ( int i = 0 ; i < argcount ; i++) {
 		len = strlen(argv[i]) + 1;
 		sp -= len;
@@ -561,6 +565,7 @@ void execThread(int arg) {
 // -------------------------------------------------------------------------
 
 void execFile() {
+  pageLock->Acquire();
   argc = 0; // set number of args to 0 until we check
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
@@ -569,7 +574,6 @@ void execFile() {
   AddrSpace *space = currentThread->space;
   int physAddr;
 	// Address translation
-  pageLock->Acquire();
   for ( int i = 0 ; i < 127 ; i++) {
     LockPage(whence + i);
     
