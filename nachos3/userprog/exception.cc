@@ -32,6 +32,7 @@
 #ifdef USE_TLB
 
 #ifdef CHANGED
+#define CPNUMBER 0xfafbfcfd
 //----------------------------------------------------------------------
 // Space for Global Data as needed
 //
@@ -573,6 +574,7 @@ void execFile() {
   }
   filename[127] = '\0';
 
+
   // Get arguments from the kernel
   char * argv[10] = {NULL};
   char * tmp = new(std::nothrow) char[128];
@@ -610,6 +612,8 @@ void execFile() {
 	argc = j;
 	delete [] tmp;
   OpenFile *executable = fileSystem->Open(filename);
+
+  //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
   
   if (executable == NULL) {
     machine->WriteRegister(2, -1);
@@ -791,13 +795,50 @@ void joinProcess() {
 //----------------------------------------------------------------------
 
 void checkPoint() {
-  //get vaddr from reg 2
-  //if the file exists, load it from memory, and return 1
+  char * filename = new(std::nothrow) char[128];
+  whence = machine->ReadRegister(4);
+  // get char * address from information at argv, then argv+1 etc.
+  AddrSpace *space = currentThread->space;
+  int physAddr;
+	// Address translation
+  for ( int i = 0 ; i < 127 ; i++) {
+    LockPage(whence + i);
+    
+    if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
+      machine->WriteRegister(2,-1);
+      ReleasePage(whence + i);
+      pageLock->Release();
+      return;
+    }
+    ReleasePage(whence + i);
+    if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
+  }
+  filename[127] = '\0';
+  //get PC from PCREG
+  
+  if ( ! fileSystem->Create(filename, 0) ) {// second arg not needed, dynamic file size
+    machine->WriteRegister(2, -1);
+    return;
+  }
+  OpenFile *cp = fileSystem->Open(filename);
 
+  if (cp == NULL) {
+    machine->WriteRegister(2, -1);
+    return;
+
+  }
   //if creating a checkpoint save it to disk and return 0
 
-
-  //if something goes wrong, return -1
+  //wrap in a for loop, buffer is contents of page[i]
+  char buffer[128];
+  int numPages = space->numPages;
+  for (int i = 0; i < numPages; i++) {
+    disk->ReadSector(space->pageTable[i].diskPage, buffer);
+    int numWrite = cp->Write( buffer, 128);
+  }
+  
+  
+  machine->WriteRegister(2, 0);
 }
 
 #endif

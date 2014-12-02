@@ -160,6 +160,13 @@ AddrSpace::AddrSpace(OpenFile *executable)
       for (j = 0; j < (noffH.code.size + noffH.initData.size); j += 128, i++) {
 	disk->WriteSector(pageTable[i].diskPage, &buffer[j]);
       }
+      for (j = 0; j < 128; j++) {
+	buffer[j] = '\0';
+      }
+      unsigned int k = i;
+      for (;k< numPages; k++) {
+	disk->WriteSector(pageTable[k].diskPage, buffer);
+      }
       delete buffer;
     }
       
