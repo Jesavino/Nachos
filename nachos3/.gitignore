@@ -66,3 +66,9 @@ test/qsort
 test/qmatmult
 test/vmtorture
 test/Xkid
+test2/Xkid
+test2/ckpttorture
+test2/ckmatmult
+test2/qsort
+test2/rematmult
+test2/xmatmult
