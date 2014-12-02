@@ -22,7 +22,7 @@
 #include "synchdisk.h"
 #endif
 
-#define UserStackSize		1024 	// increase this as necessary!
+#define UserStackSize		2048 	// increase this as necessary!
 
 #ifdef CHANGED
 class MemoryManager;

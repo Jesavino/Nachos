@@ -353,7 +353,7 @@ void writeFile() {
 		int numWrite = fileToWrite->Write( stringarg, size);
 		machine->WriteRegister(2, numWrite);
 	}	
-	delete [] stringarg;
+	//	delete [] stringarg;
 }
 //-----------------------------------------------------------------------------------------
 //
@@ -785,6 +785,21 @@ void joinProcess() {
   machine->WriteRegister(2, exitStatus);
 }
 
+//----------------------------------------------------------------------
+// checkPoint
+//     creates a checkpoint of the program.
+//----------------------------------------------------------------------
+
+void checkPoint() {
+  //get vaddr from reg 2
+  //if the file exists, load it from memory, and return 1
+
+  //if creating a checkpoint save it to disk and return 0
+
+
+  //if something goes wrong, return -1
+}
+
 #endif
 
 //----------------------------------------------------------------------
@@ -930,9 +945,10 @@ ExceptionHandler(ExceptionType which)
 	    incrementPC();
 	    break;
 
-	    //	  case SC_CheckPoint:
-	    // break;
-	    //	    checkpoint();
+	  case SC_CheckPoint:
+	    checkPoint();
+	    incrementPC();
+	    break;
 	    
 
 	    /*	  case SC_Fork:
