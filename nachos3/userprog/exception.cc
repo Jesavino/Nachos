@@ -534,20 +534,10 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 void execThread(int arg) {
   currentThread->space->InitRegisters();
 
-  
-  
-  machine->WriteRegister(PrevPCReg, regs[PrevPCReg]);
-  machine->WriteRegister(PCReg, regs[PCReg]);	
-    // Need to also tell MIPS where next instruction is, because
-    // of branch delay possibility
-  machine->WriteRegister(NextPCReg, regs[NextPCReg]);
-   // Set the stack register to the end of the address space, where we
-   // allocated the stack; but subtract off a bit, to make sure we don't
-   // accidentally reference off the end!
-  machine->WriteRegister(StackReg, regs[StackReg]);
-
   for (int i = 0; i < NumTotalRegs; i++) {
-    machine->WriteRegister(i, regs[i]);
+    if (regs[i] != 0) {
+      machine->WriteRegister(i, regs[i]);
+    }
   }
 
   incrementPC();
