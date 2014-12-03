@@ -71,19 +71,20 @@ SwapHeader (NoffHeader *noffH)
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-AddrSpace::AddrSpace(OpenFile *executable)
+AddrSpace::AddrSpace(OpenFile *file)
 {
     NoffHeader noffH;
     unsigned int size;
 #ifndef USE_TLB
     unsigned int i;
 #endif
-    
+    executable = file;
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 	(WordToHost(noffH.noffMagic) == NOFFMAGIC))
       SwapHeader(&noffH);
 #ifdef CHANGED
+    offset = noffH.code.inFileAddr;
     // assume the creation has not failed yet
     fail = 0;
     if (noffH.noffMagic != NOFFMAGIC) {
@@ -133,7 +134,7 @@ AddrSpace::AddrSpace(OpenFile *executable)
       pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
       physPage = -1;
       pageTable[i].physicalPage = physPage;
-      pageTable[i].diskPage = getDiskPageNum();
+      pageTable[i].diskPage = -1;
       pageTable[i].valid = true;
       pageTable[i].use = false;
       pageTable[i].dirty = false;
@@ -149,53 +150,6 @@ AddrSpace::AddrSpace(OpenFile *executable)
     
     
     //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
-    int i = 0;
-    if (noffH.code.size > 0 ) {
-      char *buffer = (char *) malloc(sizeof(char) * (noffH.code.size + noffH.initData.size));
-      int j = noffH.code.size;
-      executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-      if (noffH.initData.size > 0) {
-	executable->ReadAt(&buffer[j], noffH.initData.size, noffH.initData.inFileAddr);
-      }
-      for (j = 0; j < (noffH.code.size + noffH.initData.size); j += 128, i++) {
-	disk->WriteSector(pageTable[i].diskPage, &buffer[j]);
-      }
-      for (j = 0; j < 128; j++) {
-	buffer[j] = '\0';
-      }
-      unsigned int k = i;
-      for (;k< numPages; k++) {
-	disk->WriteSector(pageTable[k].diskPage, buffer);
-      }
-      delete buffer;
-    }
-      
-    /*
-    if (noffH.code.size > 0) {
-      DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
-	    noffH.code.virtualAddr, noffH.code.size);
-      char *buffer = (char *) malloc( sizeof(char*) * noffH.code.size);
-      executable->ReadAt(buffer, noffH.code.size, noffH.code.inFileAddr);
-      for (int j = 0; j < noffH.code.size; j++) {
-	memManager->WriteMem(noffH.code.virtualAddr + j, 1, (int) buffer[j], this);
-      }
-      delete buffer;
-    }
-    //    fprintf(stderr, "\n****** Past Code Init ********\n");
-    //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.initData.size, noffH.initData.virtualAddr);
-    if (noffH.initData.size > 0) {
-      DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
-	    noffH.initData.virtualAddr, noffH.initData.size);
-      char * buffer = (char *) malloc( sizeof(char*) * noffH.initData.size);
-      
-      executable->ReadAt(buffer, noffH.initData.size, noffH.initData.inFileAddr);
-      
-      for (int j = 0; j < noffH.initData.size; j++) {
-	memManager->WriteMem(noffH.initData.virtualAddr + j, 1, (int) buffer[j], this);
-      }
-      delete buffer;
-      }	*/
-    //fprintf(stderr, "All memeory pre-allocation done\n");
 #endif
     
 }
@@ -205,19 +159,12 @@ AddrSpace::AddrSpace(OpenFile *executable)
 // Alternate constructor for loading from a checkpoint.
 //----------------------------------------------------------------------
 
-AddrSpace::AddrSpace(OpenFile *cp, int offset){
-  /*    int NumPages;
-    int MaxVirtualAddress;
-    PageInfo *pageTable;	// how we keep track of memory
-    unsigned int numPages;		// Number of pages in the virtual 
-															// address space		
-    MemoryManager *memManager;
-    int fail;
-  */
-  
+AddrSpace::AddrSpace(OpenFile *cp, int headerSize){
+  executable = cp;
+  offset = headerSize;
   memManager = new(std::nothrow) MemoryManager(machine);
 
-  MaxVirtualAddress = cp->Length() - 20;
+  MaxVirtualAddress = executable->Length() - offset;
   fail = 0;
   int physPage;
   numPages = divRoundUp(MaxVirtualAddress, PageSize);
@@ -227,7 +174,7 @@ AddrSpace::AddrSpace(OpenFile *cp, int offset){
     pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
     physPage = -1;
     pageTable[i].physicalPage = physPage;
-    pageTable[i].diskPage = getDiskPageNum();
+    pageTable[i].diskPage = -1;
     pageTable[i].valid = true;
     pageTable[i].use = false;
     pageTable[i].dirty = false;
@@ -243,13 +190,6 @@ AddrSpace::AddrSpace(OpenFile *cp, int offset){
     
   
     //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
-  int i = 0;
-  char buffer[PageSize];
-  // j < size of executable or max virtual address
-  for ( int j = offset; j < cp->Length(); j += 128, i++) {
-    cp->ReadAt(buffer, PageSize, j);
-    disk->WriteSector(pageTable[i].diskPage, buffer);
-  }
   
 }
 
@@ -282,6 +222,18 @@ int AddrSpace::getFail() {
   return fail;
 }
 
+//----------------------------------------------------------------------
+//----------------------------------------------------------------------
+void AddrSpace::LoadPageToDisk(int vpn){
+
+  int i = 0;
+  char buffer[PageSize];
+  // j < size of executable or max virtual address
+  pageTable[vpn].diskPage = getDiskPageNum();
+  executable->ReadAt(buffer, PageSize, vpn * PageSize + offset);
+  disk->WriteSector(pageTable[vpn].diskPage, buffer);
+  
+}
 #endif
 
 //----------------------------------------------------------------------

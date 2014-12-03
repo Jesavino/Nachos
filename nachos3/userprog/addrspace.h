@@ -64,16 +64,17 @@ class AddrSpace {
     void RestoreState();		// info on a context switch
 
 #ifdef CHANGED
-    void InitRegisters(int pcreg, int nextpc, int stackp);
-
+    void LoadPageToDisk(int vpn);
+    
     PageInfo* getPageTable(); // in order to get access to the page table
     void PrintRegisters(); //just a function for debugging
+    OpenFile * executable;
     int getFail();
     int NumPages;
     int MaxVirtualAddress;
     PageInfo *pageTable;	// how we keep track of memory
-    unsigned int numPages;		// Number of pages in the virtual 
-															// address space		
+    unsigned int numPages;		// Number of pages in the virtual address space
+    int offset;
     MemoryManager *memManager;
     int fail;
 #endif

@@ -151,6 +151,7 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   // else get page from disk into memory.
   //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
+  if (space->pageTable[vpn].diskPage == -1) space->LoadPageToDisk(vpn);
   stats->numPageFaults++;
   int pageToReplace = FindPageToReplace();
   physPageDesc[pageToReplace].pageLock = true;
@@ -692,7 +693,7 @@ void execFile() {
 
   thread->Fork(execThread, 0);
 	
-  delete executable;			// close file
+  //  delete executable;			// close file
 }  
 // ----------------------------------------------------------------------
 //
@@ -869,22 +870,12 @@ void checkPoint() {
     regs[i] = machine->ReadRegister(i);
     cp->Write((char *) &regs[i], sizeof(int));
   }
-  //wrap in a for loop, buffer is contents of page[i]
-  /*  for (int j = 0; j < NumPhysPages; j++) {
-    int diskSector = physPageDesc[j].diskpage;
-    char * buffer = new char[128];
-    for (int i = 0; i < PageSize; i++) {
-      buffer[i] = machine->mainMemory[physAddr + i];
-    }
-    disk->WriteSector(diskSector, buffer);
-    //write page back to disk
-    delete [] buffer;
-    }*/
-
   char buffer[128];
   int numPages = space->numPages;
 
   for (int i = 0; i < numPages; i++) {
+    if (space->pageTable[i].diskPage == -1) space->LoadPageToDisk(i);
+
     disk->ReadSector(space->pageTable[i].diskPage, buffer);
     int numWrite = cp->Write( buffer, 128);
   }
