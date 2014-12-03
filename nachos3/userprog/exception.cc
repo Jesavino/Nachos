@@ -540,7 +540,9 @@ void execThread(int arg) {
     }
   }
 
-  incrementPC();
+  if (regs[PCReg] != 0){
+    incrementPC();
+  }
   //  currentThread->space->PrintRegisters();
   currentThread->space->RestoreState();		// load page table register
   // If there were args, prep the stack here
