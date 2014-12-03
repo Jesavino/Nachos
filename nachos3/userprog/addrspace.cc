@@ -203,18 +203,19 @@ AddrSpace::~AddrSpace()
 {
 #ifdef CHANGED
   if (!fail) {
-  for (unsigned int i = 0; i < numPages; i++){
-    //    printf("%d\n", pageTable[i].diskPage);
-    if (pageTable[i].diskPage != -1)
-    diskmap->Clear(pageTable[i].diskPage);
+    for (unsigned int i = 0; i < numPages; i++){
+      //    printf("%d\n", pageTable[i].diskPage);
+      if (pageTable[i].diskPage != -1)
+	diskmap->Clear(pageTable[i].diskPage);
+    }
+    
+    //#endif
+    //#ifndef USE_TLB
+    delete [] pageTable;
+    pageTable = NULL;
+    delete memManager;
   }
-  
-  //#endif
-  //#ifndef USE_TLB
-   delete [] pageTable;
-   pageTable = NULL;
-   delete memManager;
-  }
+  delete executable;
 }
 
 
