@@ -226,7 +226,6 @@ int AddrSpace::getFail() {
 //----------------------------------------------------------------------
 void AddrSpace::LoadPageToDisk(int vpn){
 
-  int i = 0;
   char buffer[PageSize];
   // j < size of executable or max virtual address
   pageTable[vpn].diskPage = getDiskPageNum();

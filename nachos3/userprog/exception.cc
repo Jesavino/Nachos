@@ -32,7 +32,7 @@
 #ifdef USE_TLB
 
 #ifdef CHANGED
-#define CPNUMBER 0xfafbfcfd
+#define CPNUMBER 0xfafb
 //----------------------------------------------------------------------
 // Space for Global Data as needed
 //
@@ -80,7 +80,6 @@ extern SynchDisk * disk;
 
 // Lock to ensure mutex throughout access to process data
 Lock * procLock = new(std::nothrow) Lock("global process lock");
-Lock * pageLock = new(std::nothrow) Lock("page table lock");
 
 int cpnum;
 int pcreg;
@@ -583,7 +582,6 @@ void execFile() {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       machine->WriteRegister(2,-1);
       ReleasePage(whence + i);
-      pageLock->Release();
       return;
     }
     ReleasePage(whence + i);
@@ -642,12 +640,12 @@ void execFile() {
   executable->ReadAt((char*)&cpnum, sizeof(int), 0);
   if (cpnum == CPNUMBER) {
     argc = 0;
-    j = 8;
+    j = 4;
     for (int i = 0; i < NumTotalRegs; i++) {
       executable->ReadAt((char *) &regs[i], sizeof(int), j);
       j+=4;
     }
-    newSpace = new(std::nothrow) AddrSpace(executable, NumTotalRegs * sizeof(int) + 8);
+    newSpace = new(std::nothrow) AddrSpace(executable, NumTotalRegs * sizeof(int) + 4);
   }
 
   // create a new addressSpace to be given to new thread
@@ -842,7 +840,6 @@ void checkPoint() {
     if  ( !space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
       machine->WriteRegister(2,-1);
       ReleasePage(whence + i);
-      pageLock->Release();
       return;
     }
     ReleasePage(whence + i);
@@ -865,7 +862,7 @@ void checkPoint() {
   //if creating a checkpoint save it to disk and return 0
   //pcreg, nextpcreg, and stackpointer need to be saved
   int cpNum = CPNUMBER;
-  cp->Write((char *) &cpNum, 8);
+  cp->Write((char *) &cpNum, 4);
   for (int i = 0; i < NumTotalRegs; i++) {
     regs[i] = machine->ReadRegister(i);
     cp->Write((char *) &regs[i], sizeof(int));
@@ -877,7 +874,7 @@ void checkPoint() {
     if (space->pageTable[i].diskPage == -1) space->LoadPageToDisk(i);
 
     disk->ReadSector(space->pageTable[i].diskPage, buffer);
-    int numWrite = cp->Write( buffer, 128);
+    cp->Write( buffer, 128);
   }
   
   
