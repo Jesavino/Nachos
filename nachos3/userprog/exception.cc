@@ -86,6 +86,7 @@ int cpnum;
 int pcreg;
 int nextpcreg;
 int stackp;
+int regs[NumTotalRegs];
 
 //debug method
 void printppd() {
@@ -315,7 +316,6 @@ void openFile() {
 //
 // ----------------------------------------------------------------------------------------					
 void writeFile() {
-  currentThread->space->PrintRegisters();
 	int physAddr;
 	AddrSpace *space = currentThread->space;
 	DEBUG('a', "Writing to a file\n");
@@ -532,23 +532,26 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 // ---------------------------------------------------------------------
 
 void execThread(int arg) {
-  currentThread->space->PrintRegisters();
-
   currentThread->space->InitRegisters();
 
-  currentThread->space->PrintRegisters();
   
-  machine->WriteRegister(PCReg, pcreg);	
+  
+  machine->WriteRegister(PrevPCReg, regs[PrevPCReg]);
+  machine->WriteRegister(PCReg, regs[PCReg]);	
     // Need to also tell MIPS where next instruction is, because
     // of branch delay possibility
-  machine->WriteRegister(NextPCReg, nextpcreg);
+  machine->WriteRegister(NextPCReg, regs[NextPCReg]);
    // Set the stack register to the end of the address space, where we
    // allocated the stack; but subtract off a bit, to make sure we don't
    // accidentally reference off the end!
-  machine->WriteRegister(StackReg, stackp);
+  machine->WriteRegister(StackReg, regs[StackReg]);
+
+  for (int i = 0; i < NumTotalRegs; i++) {
+    machine->WriteRegister(i, regs[i]);
+  }
 
   incrementPC();
-  currentThread->space->PrintRegisters();
+  //  currentThread->space->PrintRegisters();
   currentThread->space->RestoreState();		// load page table register
   // If there were args, prep the stack here
   if(argc) 
@@ -640,21 +643,24 @@ void execFile() {
 
 
   //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
-  pcreg = 0;
-  nextpcreg = 4;
-  stackp = 0;
+  for (int i = 0; i < NumTotalRegs; i ++) {
+    regs[i] = 0;
+  }
   executable->ReadAt((char*)&cpnum, sizeof(int), 0);
   if (cpnum == CPNUMBER) {
     argc = 0;
-    executable->ReadAt((char *) &pcreg, sizeof(int), 8);
-    executable->ReadAt((char *) &nextpcreg, sizeof(int), 12);
-    executable->ReadAt((char *) &stackp, sizeof(int), 16);
-    newSpace = new(std::nothrow) AddrSpace(executable, 20);
+    j = 8;
+    for (int i = 0; i < NumTotalRegs; i++) {
+      executable->ReadAt((char *) &regs[i], sizeof(int), j);
+      j+=4;
+    }
+    newSpace = new(std::nothrow) AddrSpace(executable, NumTotalRegs * sizeof(int) + 8);
   }
 
   // create a new addressSpace to be given to new thread
   else {
-    newSpace = new(std::nothrow) AddrSpace(executable);    
+    newSpace = new(std::nothrow) AddrSpace(executable);
+    regs[NextPCReg] = 4;
   }
   if (newSpace->getFail()) {
     // if address space failed for any reason, delete it
@@ -834,7 +840,7 @@ void checkPoint() {
   whence = machine->ReadRegister(4);
   // get char * address from information at argv, then argv+1 etc.
   AddrSpace *space = currentThread->space;
-  space->PrintRegisters();
+  //  space->PrintRegisters();
   int physAddr;
 	// Address translation
   for ( int i = 0 ; i < 127 ; i++) {
@@ -867,16 +873,25 @@ void checkPoint() {
   //pcreg, nextpcreg, and stackpointer need to be saved
   int cpNum = CPNUMBER;
   cp->Write((char *) &cpNum, 8);
-  pcreg = machine->ReadRegister(PCReg);
-  nextpcreg = machine->ReadRegister(NextPCReg);
-  stackp = machine->ReadRegister(StackReg);
-
-  cp->Write((char*)&pcreg, sizeof(int));
-  cp->Write((char*)&nextpcreg, sizeof(int));
-  cp->Write((char*)&stackp, sizeof(int));
+  for (int i = 0; i < NumTotalRegs; i++) {
+    regs[i] = machine->ReadRegister(i);
+    cp->Write((char *) &regs[i], sizeof(int));
+  }
   //wrap in a for loop, buffer is contents of page[i]
+  /*  for (int j = 0; j < NumPhysPages; j++) {
+    int diskSector = physPageDesc[j].diskpage;
+    char * buffer = new char[128];
+    for (int i = 0; i < PageSize; i++) {
+      buffer[i] = machine->mainMemory[physAddr + i];
+    }
+    disk->WriteSector(diskSector, buffer);
+    //write page back to disk
+    delete [] buffer;
+    }*/
+
   char buffer[128];
   int numPages = space->numPages;
+
   for (int i = 0; i < numPages; i++) {
     disk->ReadSector(space->pageTable[i].diskPage, buffer);
     int numWrite = cp->Write( buffer, 128);
