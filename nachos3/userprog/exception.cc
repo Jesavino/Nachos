@@ -137,6 +137,7 @@ LockPage(int vpn) {
 	int virtualPage = vpn / PageSize;
 	AddrSpace *space = currentThread->space;
 	PageInfo *table = space->getPageTable();
+	/*
 	int physPage = table[virtualPage].physicalPage;
 	if ( physPage == -1) {
 	 	LoadPageToMemory(virtualPage , space);
@@ -146,6 +147,22 @@ LockPage(int vpn) {
 	// and the page is then locked, and set to valid.
 	//physPageDesc[physPage].pageLock = true;
 	physPageDesc[physPage].pageLock->Acquire();
+	*/
+	int physPage = -1;
+	while (physPage == -1) {
+		physPage = table[virtualPage].physicalPage;
+
+		if (physPage == -1) {
+			LoadPageToMemory(virtualPage, space);
+			physPage = table[virtualPage].physicalPage;
+		}
+		physPageDesc[physPage].pageLock->Acquire();
+
+		physPage = table[virtualPage].physicalPage;
+
+	}
+
+
 	physPageDesc[physPage].valid = true;
 }
 
@@ -690,10 +707,10 @@ void execFile() {
   int j = 0;
   int size;
   while(arg != 0 && whence !=0)  {
-    LockPage(whence);
-    space->memManager->Translate(arg, &arg, 1, false, space);
+    LockPage(arg);
+    space->memManager->Translate(arg, &physAddr, 1, false, space);
     for ( int i = 0 ; i < 127 ; i++) {
-      if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
+      if((tmp[i] = machine->mainMemory[physAddr+i]) == '\0'){
 	break;
       }
     }
@@ -702,7 +719,7 @@ void execFile() {
     argv[j] = new(std::nothrow) char[size];
     strcpy(*(argv + j) , tmp);		
     j++;
-    ReleasePage(whence);		
+    ReleasePage(arg);		
     whence += 4;
     LockPage(whence);
     space->memManager->ReadMem(whence, 4, &arg, space);
