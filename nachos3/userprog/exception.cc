@@ -162,7 +162,6 @@ LockPage(int vpn) {
 
 	}
 
-
 	physPageDesc[physPage].valid = true;
 }
 
