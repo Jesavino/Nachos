@@ -95,6 +95,23 @@ void printppd() {
 }
 void LoadPageToMemory(int vpn, AddrSpace *space);
 
+void WriteDirtyPage(int physPage) {
+
+  if (physPageDesc[physPage].dirty) {
+    int physAddr = physPage * PageSize;
+    int diskSector = physPageDesc[physPage].diskpage;
+    char * buffer = new char[128];
+    for (int i = 0; i < PageSize; i++) {
+      buffer[i] = machine->mainMemory[physAddr + i];
+    }
+    disk->WriteSector(diskSector, buffer);
+    //write page back to disk
+    delete [] buffer;
+  }
+  physPageDesc[physPage].dirty = false;
+
+}
+
 void
 LockPage(int vpn) {
 	int virtualPage = vpn / PageSize;
@@ -162,7 +179,8 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   }
   int physAddr = pageToReplace * PageSize;
 
-  if (physPageDesc[pageToReplace].dirty) {
+  WriteDirtyPage(pageToReplace);
+  /*  if (physPageDesc[pageToReplace].dirty) {
     int diskSector = physPageDesc[pageToReplace].diskpage;
     char * buffer = new char[128];
     for (int i = 0; i < PageSize; i++) {
@@ -171,7 +189,8 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
     disk->WriteSector(diskSector, buffer);
     //write page back to disk
     delete [] buffer;
-  }
+    }*/
+
   if (physPageDesc[pageToReplace].space != NULL) {
     AddrSpace * otherSpace = physPageDesc[pageToReplace].space;
     if (otherSpace->pageTable != NULL)
@@ -860,7 +879,6 @@ void checkPoint() {
 
   }
   //if creating a checkpoint save it to disk and return 0
-  //pcreg, nextpcreg, and stackpointer need to be saved
   int cpNum = CPNUMBER;
   cp->Write((char *) &cpNum, 4);
   for (int i = 0; i < NumTotalRegs; i++) {
@@ -869,10 +887,19 @@ void checkPoint() {
   }
   char buffer[128];
   int numPages = space->numPages;
-
+  
+  
   for (int i = 0; i < numPages; i++) {
+    int physicalPage = space->pageTable[i].physicalPage;
+
+    // if the page is not on the disk
     if (space->pageTable[i].diskPage == -1) space->LoadPageToDisk(i);
 
+    //if the page is dirty, write it back to disk
+    else if (physicalPage != -1) {
+      WriteDirtyPage(physicalPage);
+    }
+    
     disk->ReadSector(space->pageTable[i].diskPage, buffer);
     cp->Write( buffer, 128);
   }
