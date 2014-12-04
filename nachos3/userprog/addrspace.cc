@@ -156,7 +156,10 @@ AddrSpace::AddrSpace(OpenFile *file)
 
 #ifdef CHANGED
 //----------------------------------------------------------------------
-// Alternate constructor for loading from a checkpoint.
+// AddrSpace::AddrSpace
+//     Alternate constructor for loading from a checkpoint.
+//     cp is the file that has been checkpointed.
+//     headersize is the amount of data before the pages in the file
 //----------------------------------------------------------------------
 
 AddrSpace::AddrSpace(OpenFile *cp, int headerSize){
@@ -181,16 +184,7 @@ AddrSpace::AddrSpace(OpenFile *cp, int headerSize){
     pageTable[i].readOnly = false;  // if the code segment was entirely on 
       // a separate page, we could set its 		
       // pages to be read-only
-
-      //      memManager->Translate(pageTable[i].virtualPage * PageSize, &physAddr, 1, true, this);
-      //bzero(machine->mainMemory + physAddr, PageSize);
-
   }
-    //    fprintf(stderr, "\n******** PAST THE ALLOCATION *********\n");
-    
-  
-    //fprintf(stderr, "Writing %d bytes to VA 0x%x\n", noffH.code.size, noffH.code.virtualAddr);
-  
 }
 
 #endif
@@ -203,6 +197,7 @@ AddrSpace::~AddrSpace()
 {
 #ifdef CHANGED
   if (!fail) {
+    // for each page on disk, mark the bitmap as clear, so the space can be reused
     for (unsigned int i = 0; i < numPages; i++){
       //    printf("%d\n", pageTable[i].diskPage);
       if (pageTable[i].diskPage != -1)
@@ -212,9 +207,11 @@ AddrSpace::~AddrSpace()
     //#endif
     //#ifndef USE_TLB
     delete [] pageTable;
+    // need to make sure the pageTable pointer is null for checks in system calls
     pageTable = NULL;
     delete memManager;
   }
+  // because the executable is stored in addrspace now for lazy loading.
   delete executable;
 }
 
@@ -224,6 +221,10 @@ int AddrSpace::getFail() {
 }
 
 //----------------------------------------------------------------------
+// AddrSpace::LoadPageToDisk
+//     loads a page from an executable to the disk. abstracted for
+//     lazy loading. 
+//     vpn is the virtual page number to be loaded.
 //----------------------------------------------------------------------
 void AddrSpace::LoadPageToDisk(int vpn){
 
@@ -288,6 +289,7 @@ AddrSpace::PrintRegisters() {
 void AddrSpace::SaveState() 
 {
 #ifdef CHANGED
+  // invalidate the tlb on context switches
   for (int i = 0; i < 4; i++) {
     machine->tlb[i].valid=0;
   }
@@ -317,6 +319,9 @@ void AddrSpace::RestoreState()
 #ifdef CHANGED
 
 //----------------------------------------------------------------------
+// AddrSpace::getPageTable()
+//     returns the address of the pageTable associated with this instance
+//     of the address space
 //----------------------------------------------------------------------
 
 PageInfo *AddrSpace::getPageTable() {

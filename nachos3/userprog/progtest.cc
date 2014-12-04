@@ -19,6 +19,7 @@
 #include "synchconsole.h"
 #include "processinfo.h"
 
+// globals
 BitMap * bitmap;
 BitMap * diskmap;
 SynchDisk *disk;
@@ -44,11 +45,13 @@ StartProcess(char *filename)
 	return;
     }
     space = new(std::nothrow) AddrSpace(executable);
+#ifdef CHANGED
+    //    if the address space did not constuct correctly
     if (space->fail) {
       return;
     }
+
     currentThread->space = space;
-#ifdef CHANGED
     // this process has no parent, but we will give it a parentid of -1
     currentThread->procInfo = new(std::nothrow) ProcessInfo(currentThread->pid, -1);
     //delete executable;			// close file

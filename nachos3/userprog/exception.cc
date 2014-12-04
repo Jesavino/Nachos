@@ -64,13 +64,19 @@ struct openFileDesc {
 char * stringarg;
 int whence;
 
+// for page replacement
 int commutator = 0;
+
+//global struct for storing physical page information needed.
 struct PhysPageDesc{
   int vpn;
   int diskpage;
   bool valid;
   bool dirty;
+  // it has a pointer to the address space of the owner of the page
   AddrSpace * space;
+  // pages are locked with a bool instead of an actual lock, 
+  // because Locks were giving concurrency issues.
   bool pageLock;
 }physPageDesc[NumPhysPages];
 // The SynchConsole acts as a wrapper around the Console Singleton
@@ -81,10 +87,7 @@ extern SynchDisk * disk;
 // Lock to ensure mutex throughout access to process data
 Lock * procLock = new(std::nothrow) Lock("global process lock");
 
-int cpnum;
-int pcreg;
-int nextpcreg;
-int stackp;
+// a space to store all the registers for the checkpointing process
 int regs[NumTotalRegs];
 
 //debug method
@@ -93,7 +96,14 @@ void printppd() {
     printf("physical Page: %d diskPage: %d vpn: %d\n", i, physPageDesc[i].diskpage, physPageDesc[i].vpn);
   }
 }
+
+// declaration
 void LoadPageToMemory(int vpn, AddrSpace *space);
+
+//-----------------------------------------------------------------------------
+// WriteDirtyPage
+//     writes the physPage to its correct spot on disk
+//-----------------------------------------------------------------------------
 
 void WriteDirtyPage(int physPage) {
 
@@ -108,12 +118,21 @@ void WriteDirtyPage(int physPage) {
     //write page back to disk
     delete [] buffer;
   }
+  // once the page is written to disk, it is no longer dirty.
   physPageDesc[physPage].dirty = false;
 
 }
 
+//-----------------------------------------------------------------------------
+// LockPage
+//     Abstraction to lock the physical page
+//     ensures no other process can use it
+//     uses vpn to lock, and consequently, the LockPage method
+//     can call LoadPageToMemory if the page is not in physical memory
+//-----------------------------------------------------------------------------
 void
 LockPage(int vpn) {
+  //get information required to determine the physical page
 	int virtualPage = vpn / PageSize;
 	AddrSpace *space = currentThread->space;
 	PageInfo *table = space->getPageTable();
@@ -123,98 +142,128 @@ LockPage(int vpn) {
 		physPage = table[virtualPage].physicalPage;
 	}
 
+	// and the page is then locked, and set to valid.
 	physPageDesc[physPage].pageLock = true;
 	physPageDesc[physPage].valid = true;
 }
+
+//-----------------------------------------------------------------------------
+// ReleasePage
+//     Removes the lock from the physical page.
+//-----------------------------------------------------------------------------
 void 
 ReleasePage(int vpn) {
+  // get information required to determine the physical page
 	int virtualPage = vpn / PageSize;
 	AddrSpace *space = currentThread->space;
 	PageInfo *table = space->getPageTable();
 	int physPage = table[virtualPage].physicalPage;
-
+	// and the lock is released.
 	physPageDesc[physPage].pageLock = false;
 }
 
+//-----------------------------------------------------------------------------
+// FindPageToReplace
+//     Uses the Fancy clock algorithm to find a physical page to replace
+//-----------------------------------------------------------------------------
 int FindPageToReplace() {
-    for (int i = 0; i < NumPhysPages; i++) {
-      if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty){
-	int val = commutator;
-	commutator = (commutator +1) % NumPhysPages;
-	if (physPageDesc[commutator].pageLock == true) continue;
-	return val;
-      }
+  for (int i = 0; i < NumPhysPages; i++) {
+    
+    // find an unlocked page that is not valid or dirty.
+    if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty
+	&& !physPageDesc[commutator].pageLock) {
+      int val = commutator;
+      //increment the commutator before returning
+      commutator = (commutator +1) % NumPhysPages;
+      return val;
+    }
+    // increment the commutator 
     commutator = (commutator +1) % NumPhysPages;
+  }
+
+  // if there were no invalid pages, we need to go through again and find a page 
+  // that is not valid and is dirty. 
+  // in this loop, we also set each page we come across to not valid
+  for (int i = 0; i < NumPhysPages; i++) {
+    if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty
+	&& !physPageDesc[commutator].pageLock) {
+      //return dirty page
+      int val = commutator;
+      //increment the commutator befor returning
+      commutator = (commutator +1) % NumPhysPages;
+      if (physPageDesc[commutator].pageLock == true) continue;
+      return val;
     }
-    for (int i = 0; i < NumPhysPages; i++) {
-      if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty) {
-	//return dirty page
-	int val = commutator;
-	commutator = (commutator +1) % NumPhysPages;
-	if (physPageDesc[commutator].pageLock == true) continue;
-	return val;
-      }
-      physPageDesc[commutator].valid = false;
-      commutator = (commutator + 1) % NumPhysPages;
-    }
-    return FindPageToReplace();
+    // set the page to not valid and increment the commutator
+    physPageDesc[commutator].valid = false;
+    commutator = (commutator + 1) % NumPhysPages;
+  }
+  // 1 recursive call is made. According to fancy clock specs, it should return a
+  // value because there is guaranteed to be an invalid page.
+  return FindPageToReplace();
 }
 
-//load page from disk to physical memory
+//-----------------------------------------------------------------------------
+// LoadPageToMemory
+//     Loads a page from the disk to physical memory.
+//-----------------------------------------------------------------------------
 
 void LoadPageToMemory(int vpn, AddrSpace * space) {
+
   //if page in memory, return
-  // else get page from disk into memory.
-  //  printppd();
   if (space->pageTable[vpn].physicalPage != -1) return;
+  
+  // if the page is not on disk (lazy loading) load it to disk
   if (space->pageTable[vpn].diskPage == -1) space->LoadPageToDisk(vpn);
+
+  //increase the number of pageFaults if the page is not in physical memory.
   stats->numPageFaults++;
   int pageToReplace = FindPageToReplace();
   physPageDesc[pageToReplace].pageLock = true;
-	//fprintf(stderr, "Pulling VPN %d onto PPN %d\n", vpn, pageToReplace);
+  
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
+      // invalidate the tlb entry for this page, if it is in the tlb.
       machine->tlb[i].valid = false;
     }
   }
   int physAddr = pageToReplace * PageSize;
 
   WriteDirtyPage(pageToReplace);
-  /*  if (physPageDesc[pageToReplace].dirty) {
-    int diskSector = physPageDesc[pageToReplace].diskpage;
-    char * buffer = new char[128];
-    for (int i = 0; i < PageSize; i++) {
-      buffer[i] = machine->mainMemory[physAddr + i];
-    }
-    disk->WriteSector(diskSector, buffer);
-    //write page back to disk
-    delete [] buffer;
-    }*/
 
+  // we need to make sure that the page we are replace is properly marked as no longer in
+  // the owning processes pageTable
+  // if there is no associated pageTable, that process is no longer running.
   if (physPageDesc[pageToReplace].space != NULL) {
     AddrSpace * otherSpace = physPageDesc[pageToReplace].space;
     if (otherSpace->pageTable != NULL)
       otherSpace->pageTable[physPageDesc[pageToReplace].vpn].physicalPage = -1;
   }
   space->pageTable[vpn].physicalPage = pageToReplace;
+
   //read page from disk into mainmemory[physAddr]
   char *buffer = new char[128];
   disk->ReadSector(space->pageTable[vpn].diskPage, buffer);
   
+  // write the sector to physical memory
   for (int i = 0; i <PageSize; i++) {
     machine->mainMemory[physAddr + i] = buffer[i];
   }
+
   delete [] buffer;
+
+  // set the information in the physPageDesc struct
   physPageDesc[pageToReplace].vpn = vpn;
   physPageDesc[pageToReplace].diskpage = space->pageTable[vpn].diskPage;
   physPageDesc[pageToReplace].valid = true;
   physPageDesc[pageToReplace].dirty = true;
   physPageDesc[pageToReplace].space = space;
-
   physPageDesc[pageToReplace].pageLock = false;
 }
 
+//-----------------------------------------------------------------------------
 // Increments the program counters
+//-----------------------------------------------------------------------------
 void incrementPC() {
 
 	int pc = machine->ReadRegister(PCReg);
@@ -224,6 +273,7 @@ void incrementPC() {
 	pc += 4;
 	machine->WriteRegister(NextPCReg, pc);
 }
+
 //-----------------------------------------------------------------------------
 // 
 // Called via the Create() Syscall. Assumes the filename is the only argument
@@ -544,26 +594,34 @@ void prepStack(int argcount, char **argv, AddrSpace *space) {
 }
 
 // ----------------------------------------------------------------------
-// 
-// Called to prepare the registers and stack after a thread has been 
-// created. This eventually called machine->Run() on the exec'd thread
+// execThread
+//    Called to prepare the registers and stack after a thread has been 
+//    created. This eventually called machine->Run() on the exec'd thread
 //
 // ---------------------------------------------------------------------
 
 void execThread(int arg) {
+  // registers are properly initialized
   currentThread->space->InitRegisters();
 
+  // if this was a checkpointed program, we restore the registers from the 
+  // global regs array
+  // all the registers except NextPCReg are initialized to 0 (NextPCReg ==4)
   for (int i = 0; i < NumTotalRegs; i++) {
     if (regs[i] != 0) {
       machine->WriteRegister(i, regs[i]);
     }
   }
 
+  // if its a checkpointed file, PCReg is not going to be 0
+  // so we need to increment the ProgramCounter to get to the next step, 
+  // which is what would have happened directly after the initial checkpoint
   if (regs[PCReg] != 0){
     incrementPC();
   }
-  //  currentThread->space->PrintRegisters();
+
   currentThread->space->RestoreState();		// load page table register
+
   // If there were args, prep the stack here
   if(argc) 
     prepStack(argc, args, argSpace);
@@ -653,11 +711,19 @@ void execFile() {
 
 
   //CHECK IF file is reinstantiation of checkpoint using CPNUMBER
+  // initialize the register array, because these will be written to 
+  // the registers if this is a checkpoint reinstantiation or not
   for (int i = 0; i < NumTotalRegs; i ++) {
     regs[i] = 0;
   }
+  regs[NextPCReg] = 4;
+  
+  // check the magic number at the head of the file
+  int cpnum;
   executable->ReadAt((char*)&cpnum, sizeof(int), 0);
   if (cpnum == CPNUMBER) {
+    // and if the number matches, then we load the rest of the information in the header
+    // which amounts to 40 registers
     argc = 0;
     j = 4;
     for (int i = 0; i < NumTotalRegs; i++) {
@@ -672,6 +738,7 @@ void execFile() {
     newSpace = new(std::nothrow) AddrSpace(executable);
     regs[NextPCReg] = 4;
   }
+
   if (newSpace->getFail()) {
     // if address space failed for any reason, delete it
     // and return -1
@@ -808,7 +875,11 @@ void exit() {
   // remove address space of any page in memory
   for (int i = 0; i < NumPhysPages; i++) {
     if (physPageDesc[i].space == currentThread->space) {
+      LockPage(i);
       physPageDesc[i].space = NULL;
+      physPageDesc[i].valid = false;
+      physPageDesc[i].dirty = false;
+      ReleasePage(i);
     }
   }
   
@@ -846,13 +917,15 @@ void joinProcess() {
 //----------------------------------------------------------------------
 
 void checkPoint() {
+
   char * filename = new(std::nothrow) char[128];
   whence = machine->ReadRegister(4);
+
   // get char * address from information at argv, then argv+1 etc.
   AddrSpace *space = currentThread->space;
-  //  space->PrintRegisters();
   int physAddr;
-	// Address translation
+
+  // get filename from physical memory
   for ( int i = 0 ; i < 127 ; i++) {
     LockPage(whence + i);
     
@@ -865,34 +938,39 @@ void checkPoint() {
     if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
   filename[127] = '\0';
-  //get PC from PCREG
   
+  // if we are unable to create this new file, checkpoint should return -1
   if ( ! fileSystem->Create(filename, 0) ) {// second arg not needed, dynamic file size
     machine->WriteRegister(2, -1);
     return;
   }
+
   OpenFile *cp = fileSystem->Open(filename);
 
+  // or if we are unable to open this new file
   if (cp == NULL) {
     machine->WriteRegister(2, -1);
     return;
 
   }
-  //if creating a checkpoint save it to disk and return 0
+
+  //get the magic checkpoint number and all the registers
+  // and write these to the checkpoint file
   int cpNum = CPNUMBER;
   cp->Write((char *) &cpNum, 4);
   for (int i = 0; i < NumTotalRegs; i++) {
     regs[i] = machine->ReadRegister(i);
     cp->Write((char *) &regs[i], sizeof(int));
   }
+
   char buffer[128];
   int numPages = space->numPages;
-  
-  
-  for (int i = 0; i < numPages; i++) {
-    int physicalPage = space->pageTable[i].physicalPage;
 
-    // if the page is not on the disk
+  // for each virtual page in the address space
+  for (int i = 0; i < numPages; i++) {
+    // if the page is not on the disk we should load it to the disk in order to
+    // write it to a file
+    int physicalPage = space->pageTable[i].physicalPage;
     if (space->pageTable[i].diskPage == -1) space->LoadPageToDisk(i);
 
     //if the page is dirty, write it back to disk
@@ -904,7 +982,7 @@ void checkPoint() {
     cp->Write( buffer, 128);
   }
   
-  
+  // return 0 if the checkpoint is done properly
   machine->WriteRegister(2, 0);
 }
 
@@ -1053,6 +1131,7 @@ ExceptionHandler(ExceptionType which)
 	    incrementPC();
 	    break;
 
+	    //exception system call
 	  case SC_CheckPoint:
 	    checkPoint();
 	    incrementPC();
