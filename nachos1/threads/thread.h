@@ -82,8 +82,7 @@ class Thread {
 
   public:
     Thread(const char* debugName);		// initialize a Thread 
-	Thread(const char* debugName, int priorityLevel); // initialize a Thread with a priority
-    ~Thread(); 				// deallocate a Thread
+	~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
 					// is called
@@ -102,7 +101,9 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     const char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
-
+#ifdef CHANGED
+	int getPriority() {return (priority);}
+#endif
   private:
     // some of the private data for this class is listed above
     
@@ -111,9 +112,9 @@ class Thread {
 					// (If NULL, don't deallocate stack)
     ThreadStatus status;		// ready, running or blocked
     const char* name;
-
+#ifdef CHANGED
 	int priority; // used for priority scheduling 
-
+#endif
     void StackAllocate(VoidFunctionPtr func, int arg);
     					// Allocate a stack for thread.
 					// Used internally by Fork()

@@ -136,14 +136,19 @@ Lock::~Lock() {
 //----------------------------------------------------------------------
 
 void Lock::Acquire() {
+  // the current thread should not already have the lock
+  //  ASSERT(!isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
+  // the current thread should sleep until key is FREE
   while (key == BUSY) {
     queue->Append((void *)currentThread);
     currentThread->Sleep();
   }    
 
   key = BUSY;
+
+  // this enables checking that the current thread has the lock
   threadWithLock = currentThread;
   (void) interrupt->SetLevel(oldLevel);
 }
@@ -156,18 +161,25 @@ void Lock::Acquire() {
 //----------------------------------------------------------------------
 
 void Lock::Release() {
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
   
-  if (isHeldByCurrentThread()){
-    Thread * thread = (Thread *)queue->Remove();
-    
-    if (thread != NULL) {
-      scheduler->ReadyToRun(thread);
-    }
-    
-    key = FREE;
-    (void) interrupt->SetLevel(oldLevel);
+  // if the current thread does not have the lock, it can't release it
+  while (!isHeldByCurrentThread())
+    currentThread->Sleep();
+  thread = (Thread *)queue->Remove();
+  
+  if (thread != NULL) {
+    scheduler->ReadyToRun(thread);
   }
+  
+  // make key available
+  key = FREE;
+  
+  // the current thread no longer has the lock
+  threadWithLock = NULL;
+  (void) interrupt->SetLevel(oldLevel);
+  
 }
 
 
@@ -176,7 +188,7 @@ void Lock::Release() {
 //     returns whether the current thread is the one that holds the lock
 //----------------------------------------------------------------------
 
-bool Lock::isHeldByCurrentThread(){	// true if the current thread
+bool Lock::isHeldByCurrentThread(){
   return currentThread == threadWithLock;
 }
 
@@ -208,11 +220,18 @@ Condition::~Condition() {
 //----------------------------------------------------------------------
 
 void Condition::Wait(Lock* conditionLock) { 
+  // if current thread doesn't have lock, it can't wait on it
+  ASSERT(conditionLock->isHeldByCurrentThread());
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
+  // release the lock on sleep
   conditionLock->Release();
+
+  // put current thread on sleep list
   queue->Append((void *) currentThread);
   currentThread->Sleep();
+  
+  //reacquire the lock on waking up
   conditionLock->Acquire();
 
   (void) interrupt->SetLevel(oldLevel);
@@ -226,10 +245,13 @@ void Condition::Wait(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Signal(Lock* conditionLock) { 
+
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
-  Thread * thread = (Thread *)queue->Remove();
-  if (thread != NULL)	   // make thread ready
+  // wake up the first thread on the sleeping list
+  thread = (Thread *)queue->Remove();
+  if (thread != NULL)
     scheduler->ReadyToRun(thread);
   (void) interrupt->SetLevel(oldLevel);
 }
@@ -242,9 +264,15 @@ void Condition::Signal(Lock* conditionLock) {
 //----------------------------------------------------------------------
 
 void Condition::Broadcast(Lock* conditionLock) { 
+
+  Thread * thread;
   IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
-  Thread * thread = (Thread * )queue->Remove();
+  // retrieve the first thread on the sleeping list
+  thread = (Thread * )queue->Remove();
+
+  // goes through all threads that are sleeping on this condition
+  // and wakes them up
   while (thread != NULL) {
     scheduler->ReadyToRun(thread);
     thread = (Thread *) queue->Remove();    
