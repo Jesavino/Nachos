@@ -77,7 +77,8 @@ struct PhysPageDesc{
   AddrSpace * space;
   // pages are locked with a bool instead of an actual lock, 
   // because Locks were giving concurrency issues.
-  bool pageLock;
+  Lock *pageLock = new(std::nothrow) Lock("pageLock");
+  //  bool pageLock;
 }physPageDesc[NumPhysPages];
 // The SynchConsole acts as a wrapper around the Console Singleton
 SynchConsole *synchConsole;
@@ -143,7 +144,8 @@ LockPage(int vpn) {
 	}
 
 	// and the page is then locked, and set to valid.
-	physPageDesc[physPage].pageLock = true;
+	//physPageDesc[physPage].pageLock = true;
+	physPageDesc[physPage].pageLock->Acquire();
 	physPageDesc[physPage].valid = true;
 }
 
@@ -159,7 +161,8 @@ ReleasePage(int vpn) {
 	PageInfo *table = space->getPageTable();
 	int physPage = table[virtualPage].physicalPage;
 	// and the lock is released.
-	physPageDesc[physPage].pageLock = false;
+	//	physPageDesc[physPage].pageLock = false;
+	physPageDesc[physPage].pageLock->Release();
 }
 
 //-----------------------------------------------------------------------------
@@ -170,8 +173,8 @@ int FindPageToReplace() {
   for (int i = 0; i < NumPhysPages; i++) {
     
     // find an unlocked page that is not valid or dirty.
-    if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty
-	&& !physPageDesc[commutator].pageLock) {
+    if (!physPageDesc[commutator].valid && !physPageDesc[commutator].dirty) {
+	//	&& !physPageDesc[commutator].pageLock) {
       int val = commutator;
       //increment the commutator before returning
       commutator = (commutator +1) % NumPhysPages;
@@ -185,13 +188,12 @@ int FindPageToReplace() {
   // that is not valid and is dirty. 
   // in this loop, we also set each page we come across to not valid
   for (int i = 0; i < NumPhysPages; i++) {
-    if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty
-	&& !physPageDesc[commutator].pageLock) {
+    if (!physPageDesc[commutator].valid && physPageDesc[commutator].dirty) {
+      //	&& !physPageDesc[commutator].pageLock) {
       //return dirty page
       int val = commutator;
       //increment the commutator befor returning
       commutator = (commutator +1) % NumPhysPages;
-      if (physPageDesc[commutator].pageLock == true) continue;
       return val;
     }
     // set the page to not valid and increment the commutator
@@ -219,8 +221,9 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   //increase the number of pageFaults if the page is not in physical memory.
   stats->numPageFaults++;
   int pageToReplace = FindPageToReplace();
-  physPageDesc[pageToReplace].pageLock = true;
-  
+  //  physPageDesc[pageToReplace].pageLock = true;
+  //  LockPage(vpn);
+  physPageDesc[pageToReplace].pageLock->Acquire();
   for (int i = 0; i < TLBSize; i++) {
     if (machine->tlb[i].physicalPage == pageToReplace) {
       // invalidate the tlb entry for this page, if it is in the tlb.
@@ -258,7 +261,8 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   physPageDesc[pageToReplace].valid = true;
   physPageDesc[pageToReplace].dirty = true;
   physPageDesc[pageToReplace].space = space;
-  physPageDesc[pageToReplace].pageLock = false;
+  //  physPageDesc[pageToReplace].pageLock = false;
+  physPageDesc[pageToReplace].pageLock->Release();
 }
 
 //-----------------------------------------------------------------------------
@@ -293,6 +297,7 @@ void createNewFile() {
 		LockPage(whence);
 		if( ! space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
+		  ReleasePage(whence);
 			break;
 		}
 		ReleasePage(whence);
@@ -331,6 +336,7 @@ void openFile() {
 		LockPage(whence);
 		if ( !space->memManager->Translate(whence, &physAddr, 1, false, space) ) {
 			//fprintf(stderr, "Bad Translation\n");
+		  ReleasePage(whence);
 			break;
 		}
 		ReleasePage(whence);
@@ -395,14 +401,17 @@ void writeFile() {
 
 	// Get the string to be written from userland
 	for (int i = 0 ; i < size ; i++) {
-		LockPage(whence + i);
-		if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
-			//fprintf(stderr, "Error in Write Translation\n");
-		  ReleasePage(whence + i);
-		  break;
-		}
-		ReleasePage(whence + i);
-		if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') break;
+	  LockPage(whence + i);
+	  if ( ! space->memManager->Translate(whence + i, &physAddr, 1, false, space)) {
+	    //fprintf(stderr, "Error in Write Translation\n");
+	    ReleasePage(whence + i);
+	    break;
+	  }
+	  if ((stringarg[i] = machine->mainMemory[physAddr]) == '\0') {
+	    ReleasePage(whence + i);
+	    break;
+	  }
+	  else ReleasePage(whence + i);
 	}
 	stringarg[size] = '\0';
 
@@ -661,8 +670,11 @@ void execFile() {
       ReleasePage(whence + i);
       return;
     }
+    if ((filename[i] = machine->mainMemory[physAddr]) == '\0') {
+      ReleasePage(whence + i);
+      break;
+    }
     ReleasePage(whence + i);
-    if ((filename[i] = machine->mainMemory[physAddr]) == '\0') break;
   }
   filename[127] = '\0';
 
@@ -677,8 +689,8 @@ void execFile() {
   ReleasePage(whence);
   int j = 0;
   int size;
-  LockPage(whence);
   while(arg != 0 && whence !=0)  {
+    LockPage(whence);
     space->memManager->Translate(arg, &arg, 1, false, space);
     for ( int i = 0 ; i < 127 ; i++) {
       if((tmp[i] = machine->mainMemory[arg+i]) == '\0'){
@@ -694,15 +706,15 @@ void execFile() {
     whence += 4;
     LockPage(whence);
     space->memManager->ReadMem(whence, 4, &arg, space);
+    ReleasePage(whence);
   }
-	ReleasePage(whence);
-	for (int i  = 0 ; i < 10 ; i++) {
-		if( argv[i] == NULL) break;
-		args[i] = argv[i];
-	}
-	// set global data for prep
-	argc = j;
-	delete [] tmp;
+  for (int i  = 0 ; i < 10 ; i++) {
+    if( argv[i] == NULL) break;
+    args[i] = argv[i];
+  }
+  // set global data for prep
+  argc = j;
+  delete [] tmp;
   OpenFile *executable = fileSystem->Open(filename);
   if (executable == NULL) {
     machine->WriteRegister(2, -1);
@@ -874,13 +886,15 @@ void exit() {
 
   // remove address space of any page in memory
   for (int i = 0; i < NumPhysPages; i++) {
+    physPageDesc[i].pageLock->Acquire();
     if (physPageDesc[i].space == currentThread->space) {
-      LockPage(i);
+
       physPageDesc[i].space = NULL;
       physPageDesc[i].valid = false;
       physPageDesc[i].dirty = false;
-      ReleasePage(i);
+
     }
+    physPageDesc[i].pageLock->Release();
   }
   
   // toss the addrspace so we have memory to run more programs.
