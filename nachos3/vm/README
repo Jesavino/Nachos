@@ -8,10 +8,22 @@ How to run:
        
 
 Known Problems:
-       
+ There are still some known bugs in the system. While all processes run individually, the more complex 
+	tests such as vmtorture do not complete. These known errors are due to unsolved synchronization bugs. 
+	Given more time and many many more tedious debugging errors, these could be fixed, but limitations
+	on both of those resources have forced us move on. Logically, we believe our system is 90% complete, 
+	and that there must be one or two minor oversights that have lead to this bug.       
 
 Implementation:
  
+Synchronization Control:
+	In order to ensure that page in memory are not prematurely replaced, or otherwise removed before a proces
+	has gotten the data it needs, we have implemented two things. We use a struct with information about 
+	all 32 pages currently in memory. This struct has information on the address space (and thus the process)
+	who "owns" that page, in addition to a lock for that page. When a process would like to read or write 
+	to or from a page that process must first lock the page. This is done in a LockPage method, which does
+	not return until the process 1) has control over the page and 2) the page is memory. The process must
+	then release the page after it has completed it's action. 
 
 Virtual Memory:
 Replacement Algorithm:
