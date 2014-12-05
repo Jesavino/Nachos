@@ -157,6 +157,8 @@ LockPage(int vpn) {
 			physPage = table[virtualPage].physicalPage;
 		}
 		physPageDesc[physPage].pageLock->Acquire();
+		if (table[virtualPage].physicalPage == -1)
+		  physPageDesc[physPage].pageLock->Release();
 
 		physPage = table[virtualPage].physicalPage;
 

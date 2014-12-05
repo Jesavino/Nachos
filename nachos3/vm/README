@@ -2,17 +2,14 @@ CSCI 444/544 Nachos Programming Assignment Number 3
 
 Group Members: John Savino, Thom Matessich, John Cooper
 
- 
-
-How to run: 
-       
-
 Known Problems:
  There are still some known bugs in the system. While all processes run individually, the more complex 
 	tests such as vmtorture do not complete. These known errors are due to unsolved synchronization bugs. 
 	Given more time and many many more tedious debugging errors, these could be fixed, but limitations
-	on both of those resources have forced us move on. Logically, we believe our system is 90% complete, 
-	and that there must be one or two minor oversights that have lead to this bug.       
+	on both of those resources have forced us move on. Logically, we believe our system is 90% complete
+	according to the nachos 3 specs, and that there must be one or two minor oversights that have 
+	lead to this bug.       
+
 
 Implementation:
  
@@ -26,6 +23,7 @@ Synchronization Control:
 	then release the page after it has completed it's action. 
 
 Virtual Memory:
+
 Replacement Algorithm:
 	Implemented in FindPageToReplace() in exception.cc.
 
@@ -36,6 +34,18 @@ Replacement Algorithm:
 	such page is found, we return a single recursive call to FindPageToReplace(), which now will find
 	a page which is not valid.
 
+	The disk is implemented using a global synchdisk, which is initialized in startProcess().
+	There is a bitmap to map used pages on the disk to processes that own them. 
+	
+	exception.cc has numerous new functions to deal with virtual memory and synchronization. 
+	WriteDirtyPage() - writes a dirty page to the disk
+	LockPage(), ReleasePage() - Acquire and Release the locks on individual pages in the physPageDesc 
+	struct
+	FindPageToReplace() - explained above.
+	LoadPageToMemory() - Loads a page from the disk to physical memory, and sets the physPageDesc struct
+	accordingly.
+	
+
 
 Address Space:
 	AddrSpace now has two constructors, one for a standard noff file and one for a checkpoint.
@@ -44,25 +54,62 @@ Address Space:
 	constructor to call by comparing the head of the executable to a "magic number" CPNUMBER, defined at
 	the top of exception.cc, which tells us whether the executable is the reinstantiation of a checkpoint.
 	
-	For the checkpoint constructor, we must pass an additional int parameter called headerSize which is
+	For the checkpoint constructor, we pass an additional int parameter called headerSize which is
 	the amount of data before the pages in the file. 
 	
 
 Checkpoint Scheme:
-	Implemented in exception.cc.
+	Implemented in exception.cc, in the function checkPoint(), which is called by ExceptionHandler.
+	We create a new file, the name of which is passed in as a paremeter to CheckPoint(). In this file, 
+	we first write a magic number CPNUMBER (#defined at the top of exception.cc) to the beginning
+	of the file. We then write all registers to the file, in order. At this point all physical pages
+	of the running process are written to disk if they are dirty. Then every virtual page of the process 
+	is written to the file. 
 	
-	We first write the magic number CPNUMBER to the checkpoint file so that we can differentiate it from
-	a regular executable file. We then get and write all the registers to the checkpoint file. Then, for
-	each virtual page in the address space, if the page is not on the disk we load it to the disk in order
-	to write it to a file, and if the page is dirty we write it back to the disk.
+	On reinstantiation, in execFile, the executable file is checked to see if the magic number 
+	CPNUMBER is written to the beginning of the file. If it is, then we load the registers written
+	to the file into a global array (necessary for when we fork the thread), otherwise we fill the 
+	register array with 0s. The addrspace is then 
+	called with the alternate constructor in order to get the information from the proper location
+	in the file. 
 
-	[Discuss structure and limitations of our checkpoint scheme.]
+	When execFile creates and forks the thread, the registers are loaded appropriately. If it is a 
+	reinstantiation of a checkpoint, the registers are loaded from the array we filled. Otherwise 
+	they are left at their default values from the call to AddrSpace::InitRegisters.
+	Finally, if it is a reinstantiation, the program counter is incremented as it would have been on
+	a return from the CheckPoint syscall. 
+
+	The checkpoint does not handle open files, except for consoleinput and consoleoutput.
+
+Testing:
+	The programs ckmatmult and rematmult are able to be run standalone or through the nachos shell.
+	(Though of course, each halts at the end of the program).
+	ckmatmult checkpoints the file ck1.
+	ck1 in turn starts off print i = 16, and finishes the program appropriately, printing out the correct 
+	final value. 
+	
+	ckpttorture, however, is victim to the same bug that prevents vmtorture from running correctly. 
+	This program starts running, but has a tendency for the execed programs to stop running correctly.
+	consequently, the checkpoint is either not made, or not made properly.
 
 
 Lazy Loading:
-	Implemented in LoadPageToMemory in exception.cc.
-
-	Lazy loading is trivially implemented in our system because we simply store the pointer to the open
-	executable file to disk. Instread of loading to disk in the addrspace constructor, we simply check page
-	faults and check if the disk page is set in the page table of addrspace.
-
+        Lazy Loading is implemented in AddrSpace. Each entry in the pageTable has its diskpage set to -1.
+	There is a new method, LoadPageToDisk(), which loads the 
+	virtual page passed in as a paremeter to the disk from the executable file. The executable file was 
+	originally opened and closed within the system calls. Now the system calls open the file, and a 
+	pointer to the file is passed in to the constructor. The AddrSpace keeps the executable file open 
+	for the life of the address space. The AddrSpace::LoadPageToDisk() is called on pagefaults if the 
+	pageTable diskpage is -1, meaning the page is not on disk. 
+        
+Testing:
+	the programs lazy1 and lazy2 are able to be run standalone or the nachos shell. In our tests, 
+	The numbers of disk reads on our tests are as follows:
+	                        R   W
+	standalone lazy1	342 628
+	standalone lazy2	6   6
+	shell      lazy1	351 646
+	shell      lazy2	15  15
+	
+	lazy2 shows significantly less disk reads and writes in both cases, which is
+	indicative that it works properly.
