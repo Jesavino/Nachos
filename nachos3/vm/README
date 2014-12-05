@@ -1,0 +1,55 @@
+CSCI 444/544 Nachos Programming Assignment Number 3
+
+Group Members: John Savino, Thom Matessich, John Cooper
+
+ 
+
+How to run: 
+       
+
+Known Problems:
+       
+
+Implementation:
+ 
+
+Address Space:
+	AddrSpace now has two constructors, one for a standard noff file and one for a checkpoint.
+
+	Both constructor are called in the execFile() function in exception.cc. We decide which
+	constructor to call by comparing the head of the executable to a "magic number" CPNUMBER, defined at
+	the top of exception.cc, which tells us whether the executable is the reinstantiation of a checkpoint.
+	
+	For the checkpoint constructor, we must pass an additional int parameter called headerSize which is
+	the amount of data before the pages in the file. 
+	
+
+Replacement Algorithm:
+	Implemented in FindPageToReplace() in exception.cc.
+
+	We use the Fancy Clock replacement algorithm. We use a communtator to cycle through the pages.
+	On the first cycle through, we attempt to find and return an unlocked page that not valid nor dirty.
+	If no such page exists, we cycle throught the pages a second time, now looking for a page that is
+	not valid and is dirty to return; on this cycle we also set each page we check to not valid. If no
+	such page is found, we return a single recursive call to FindPageToReplace(), which now will find
+	a page which is not valid.
+
+
+Checkpoint Scheme:
+	Implemented in exception.cc.
+	
+	We first write the magic number CPNUMBER to the checkpoint file so that we can differentiate it from
+	a regular executable file. We then get and write all the registers to the checkpoint file. Then, for
+	each virtual page in the address space, if the page is not on the disk we load it to the disk in order
+	to write it to a file, and if the page is dirty we write it back to the disk.
+
+	[Discuss structure and limitations of our checkpoint scheme.]
+
+
+Lazy Loading:
+	Implemented in LoadPageToMemory in exception.cc.
+
+	Lazy loading is trivially implemented in our system because we simply store the pointer to the open
+	executable file to disk. Instread of loading to disk in the addrspace constructor, we simply check page
+	faults and check if the disk page is set in the page table of addrspace.
+
