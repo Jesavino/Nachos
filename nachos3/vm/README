@@ -45,7 +45,18 @@ Replacement Algorithm:
 	LoadPageToMemory() - Loads a page from the disk to physical memory, and sets the physPageDesc struct
 	accordingly.
 	
+Testing:
+	halt, parent, argtest should all work according to nachos 2 spec. We haven't broken anything from 
+	previous assignments that we are aware of.
 
+	matmult is able to be run standalone or from the nachos shell. It appears to execute correctly
+
+	maxexec should be run from the nachos shell for proper exit handling. 	
+
+	vmtoobig should be run from the nachos shell for proper exit handling, but it does execute properly 
+	standalone as well.
+
+	vmtorture executes properly, but its children do not execute properly in all cases. 
 
 Address Space:
 	AddrSpace now has two constructors, one for a standard noff file and one for a checkpoint.
@@ -57,6 +68,9 @@ Address Space:
 	For the checkpoint constructor, we pass an additional int parameter called headerSize which is
 	the amount of data before the pages in the file. 
 	
+	It is still the case with nachos 3 that the address space determines how much space is needed 
+	for an executable file before it is created. If it is determined that there is not enough available
+	disk space for the program, the addrspace creation should fail.
 
 Checkpoint Scheme:
 	Implemented in exception.cc, in the function checkPoint(), which is called by ExceptionHandler.
@@ -90,7 +104,8 @@ Testing:
 	
 	ckpttorture, however, is victim to the same bug that prevents vmtorture from running correctly. 
 	This program starts running, but has a tendency for the execed programs to stop running correctly.
-	consequently, the checkpoint is either not made, or not made properly.
+	consequently, the checkpoint is not made properly. At this point, ckpttorture itself runs to 
+	completion, but its children do not in all cases execute correctly. 
 
 
 Lazy Loading:
