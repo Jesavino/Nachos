@@ -5,7 +5,7 @@ Group Members: John Savino, Thom Matessich, John Cooper
 Known Problems:
  There are still some known bugs in the system. While all processes run individually, the more complex 
 	tests such as vmtorture do not complete. These known errors are due to unsolved synchronization bugs. 
-	Given more time and many many more tedious debugging errors, these could be fixed, but limitations
+	Given more time and many many more tedious debugging hours, these could be fixed, but limitations
 	on both of those resources have forced us move on. Logically, we believe our system is 90% complete
 	according to the nachos 3 specs, and that there must be one or two minor oversights that have 
 	lead to this bug.       
