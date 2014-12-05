@@ -18,7 +18,7 @@ main()
   args[1] = (char *)0;
 
   if ((kid = Exec("huge", args, 0)) == -1) {
-    prints("Exec() failed in PARENT\n");
+    prints("Exec() failed in PARENT\n", ConsoleOutput );
     Exit(16);
   }
   

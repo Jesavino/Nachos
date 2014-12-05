@@ -277,7 +277,6 @@ void LoadPageToMemory(int vpn, AddrSpace * space) {
   physPageDesc[pageToReplace].valid = true;
   physPageDesc[pageToReplace].dirty = true;
   physPageDesc[pageToReplace].space = space;
-  //  physPageDesc[pageToReplace].pageLock = false;
   physPageDesc[pageToReplace].pageLock->Release();
 }
 

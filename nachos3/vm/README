@@ -13,17 +13,7 @@ Known Problems:
 Implementation:
  
 
-Address Space:
-	AddrSpace now has two constructors, one for a standard noff file and one for a checkpoint.
-
-	Both constructor are called in the execFile() function in exception.cc. We decide which
-	constructor to call by comparing the head of the executable to a "magic number" CPNUMBER, defined at
-	the top of exception.cc, which tells us whether the executable is the reinstantiation of a checkpoint.
-	
-	For the checkpoint constructor, we must pass an additional int parameter called headerSize which is
-	the amount of data before the pages in the file. 
-	
-
+Virtual Memory:
 Replacement Algorithm:
 	Implemented in FindPageToReplace() in exception.cc.
 
@@ -34,6 +24,17 @@ Replacement Algorithm:
 	such page is found, we return a single recursive call to FindPageToReplace(), which now will find
 	a page which is not valid.
 
+
+Address Space:
+	AddrSpace now has two constructors, one for a standard noff file and one for a checkpoint.
+
+	Both constructor are called in the execFile() function in exception.cc. We decide which
+	constructor to call by comparing the head of the executable to a "magic number" CPNUMBER, defined at
+	the top of exception.cc, which tells us whether the executable is the reinstantiation of a checkpoint.
+	
+	For the checkpoint constructor, we must pass an additional int parameter called headerSize which is
+	the amount of data before the pages in the file. 
+	
 
 Checkpoint Scheme:
 	Implemented in exception.cc.
